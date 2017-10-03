@@ -23,7 +23,7 @@ class Oakland(Jurisdiction):
 
     # add the standard city council positions
     for x in range(1,8):
-        org.add_post(label=f"District {x} Councilmember", role="Councilmember")
+        org.add_post(label=f"Council District {x}", role="Councilmember")
 
     # add the at large position
     org.add_post(label="Councilmember At Large", role="Councilmember")
