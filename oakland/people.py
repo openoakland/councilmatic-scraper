@@ -17,13 +17,14 @@ class OaklandPersonScraper(LegistarPersonScraper):
     print(self.jurisdiction)
 
     for councilman in self.councilMembers():
-      print(councilman)
-      person = Person(councilman['Person Name'])
+      assigned_district=self.__assign_district(councilman['Person Name'])
       start_date = self.toTime(councilman['Start Date']).date()
       end_date = self.toTime(councilman['End Date']).date()
-      person.add_term('Commissioner', 'legislature',
-                 district=self.__assign_district(person),
-                 start_date=start_date.isoformat(),
+      person = Person(name=councilman['Person Name'],
+                district=assigned_district,
+                role="Councilmember",
+                primary_org="legislature",
+                start_date=start_date.isoformat(),
                  end_date=end_date)
 
       if councilman["E-mail"]:
@@ -42,7 +43,7 @@ class OaklandPersonScraper(LegistarPersonScraper):
       yield person
 
   # Place holder until we can scrape district info from somewhere
-  def __assign_district(self, person):
+  def __assign_district(self, person_name):
     districts = {
       "Dan Kalb": "Council District 1",
       "Abel J. Guillén": "Council District 2",
@@ -53,4 +54,4 @@ class OaklandPersonScraper(LegistarPersonScraper):
       "Larry Reid": "Council District 7",
       "Rebecca Kaplan": "Councilmember At Large"
     }
-    return districts.get(person.name)
+    return districts.get(person_name)
