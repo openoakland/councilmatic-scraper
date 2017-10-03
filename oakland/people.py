@@ -17,7 +17,6 @@ class OaklandPersonScraper(LegistarPersonScraper):
     print(self.jurisdiction)
 
     for councilman in self.councilMembers():
-      print(councilman)
       assigned_district=self.__assign_district(councilman['Person Name'])
       start_date = self.toTime(councilman['Start Date']).date()
       end_date = self.toTime(councilman['End Date']).date()
