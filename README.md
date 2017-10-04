@@ -28,6 +28,10 @@ pupa init YOUR_CITY_SCRAPER
 
 At times, the release of ocd-django on PyPI differs from that of Github. This may cause problems if you need to create and run migrations. Specifically, you might encounter an `ImproperlyConfigured` error that instructs you to do the following:
 
+If you run into additional issues check the troubleshooting guide here:
+
+https://github.com/openoakland/councilmatic-scraper/wiki/Dev-Environment-Setup
+
 ```bash
 You must either define the environment variable DJANGO_SETTINGS_MODULE or call settings.configure() before accessing settings.
 ```
