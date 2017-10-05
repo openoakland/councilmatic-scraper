@@ -1,7 +1,7 @@
 import datetime
 
 from legistar.events import LegistarEventsScraper
-from pupa.scrape import Event
+from pupa.scrape import Event, Organization
 
 class OaklandEventScraper(LegistarEventsScraper):
   TIMEZONE = "US/Pacific"
@@ -19,11 +19,12 @@ class OaklandEventScraper(LegistarEventsScraper):
 
       event_name = event['Name'].replace('*', '')
       event_date = self.__parse_meeting_date(event['Meeting Date'], event['iCalendar']['url'])
+      event_location = self.__parse_meeting_location(event['Meeting Location'])
       ocd_event = Event(name=event_name,
                         start_date=event_date,
                         # description=event['Meeting\xa0Topic'], # Appears no description is available in Oakland Legistar
-                        location_name=event['Meeting Location'],
-                        status=self.__parse_meeting_status(event_date, event['Meeting Time']))
+                        location_name=event_location,
+                        status=self.__parse_meeting_status(event_name, event_date, event['Meeting Time']))
 
 
       if event["Meeting Details"] != 'Not\xa0available' and event["Meeting Details"] != 'Meeting\xa0details':
@@ -49,7 +50,7 @@ class OaklandEventScraper(LegistarEventsScraper):
       participating_orgs = self.__parse_participating_orgs(event_name)
 
       for org in participating_orgs:
-        ocd_event.add_participant(name=org['name'], type=org['type'])
+        ocd_event.add_committee(name=org)
 
       # #add a person
       # ocd_event.add_person(name="Joe Smith", note="Hearing Chair")
@@ -81,9 +82,6 @@ class OaklandEventScraper(LegistarEventsScraper):
       print(ocd_event)
       yield ocd_event
 
-      if index == 10:
-        break
-
   def __parse_meeting_date(self, date_str, ical_url):
     event_date = self.toTime(date_str)
     response = self.get(ical_url, verify=False)
@@ -92,8 +90,13 @@ class OaklandEventScraper(LegistarEventsScraper):
                                     minute=event_time.minute)
     return event_date
 
-  def __parse_meeting_status(self, event_date, meeting_time_str):
-    if meeting_time_str.lower() in ('deferred', 'cancelled'):
+  def __parse_meeting_location(self, location_str):
+    return location_str.split('\n')[0]
+
+  def __parse_meeting_status(self, event_name, event_date, meeting_time_str):
+    if event_name.lower().find('cancelled'):
+      status = 'cancelled'
+    elif meeting_time_str.lower() in ('deferred', 'cancelled'):
       status = 'cancelled'
     elif self.now() < event_date:
       status = 'confirmed'
@@ -103,21 +106,21 @@ class OaklandEventScraper(LegistarEventsScraper):
     return status
 
   def __parse_participating_orgs(self, event_name):
-    print("__parse_participating_orgs")
     orgs = []
     org_str = event_name.replace("Concurrent Meeting of the", '')
     org_tokens = org_str.split('and_the')
 
     for org_token in org_tokens:
-      print(org_token)
+      # org = None
+      org_name = org_token
+      org_type = 'committee'
+
       if org_token == 'City Council':
-        orgs.append({'name': 'Oakland City Council', 'type': 'council'})
-      elif org_token.find("Committee") >= 0:
-        orgs.append({'name': org_token, 'type':'committee'})
-      elif org_token.find("Agency") >= 0:
-        orgs.append({'name': org_token, 'type':'agency'})
-      else:
-        orgs.append({'name': org_token, 'type':'unknown'})
+        org_name = 'Oakland City Council'
+        org_type = 'legislature'
+
+      org_name = org_name.replace("- CANCELLED", '')
+      orgs.append(org_name)
 
     return orgs
 

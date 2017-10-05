@@ -6,6 +6,7 @@ from .people import OaklandPersonScraper
 # from .vote_events import OaklandVoteEventScraper
 
 class Oakland(Jurisdiction):
+  ORGANIZATION_NAME = "Oakland City Council"
   division_id = "ocd-division/country:us/state:ca/place:oakland"
   classification = "legislature"
   name = "City of Oakland"
@@ -19,7 +20,7 @@ class Oakland(Jurisdiction):
   }
 
   def get_organizations(self):
-    org = Organization(name="Oakland City Council", classification="legislature")
+    org = Organization(name=self.ORGANIZATION_NAME, classification="legislature")
 
     # add the standard city council positions
     for x in range(1,8):
