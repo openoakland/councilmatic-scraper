@@ -82,6 +82,9 @@ class OaklandEventScraper(LegistarEventsScraper):
       print(ocd_event)
       yield ocd_event
 
+      if index == 5:
+        break
+
   def __parse_meeting_date(self, date_str, ical_url):
     event_date = self.toTime(date_str)
     response = self.get(ical_url, verify=False)
@@ -94,9 +97,7 @@ class OaklandEventScraper(LegistarEventsScraper):
     return location_str.split('\n')[0]
 
   def __parse_meeting_status(self, event_name, event_date, meeting_time_str):
-    if event_name.lower().find('cancelled'):
-      status = 'cancelled'
-    elif meeting_time_str.lower() in ('deferred', 'cancelled'):
+    if event_name.lower().find('cancelled') or meeting_time_str.lower() in ('deferred', 'cancelled'):
       status = 'cancelled'
     elif self.now() < event_date:
       status = 'confirmed'
