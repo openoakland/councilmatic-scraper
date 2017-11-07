@@ -53,3 +53,6 @@ nosetests.xml
 .pydevproject
 
 __pycache__
+
+# emacs
+*~
