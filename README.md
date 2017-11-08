@@ -54,5 +54,5 @@ Before submitting a PR, please run `pupa update YOUR_CITY_SCRAPER`
 
 ```bash
 export DATABASE_URL=postgresql:///opencivicdata
-pupa update YOUR_CITY_SCRAPER
+pupa update oakland
 ```
