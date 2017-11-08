@@ -48,9 +48,12 @@ class OaklandEventScraper(LegistarEventsScraper):
 
       # add participating orgs
       participating_orgs = self.__parse_participating_orgs(event_name)
-
+      print("###event_name: %s" % event_name)
+      
       for org in participating_orgs:
+        print("###org: %s" % org)
         ocd_event.add_committee(name=org)
+        ocd_event.validate()
 
       # #add a person
       # ocd_event.add_person(name="Joe Smith", note="Hearing Chair")
@@ -80,10 +83,15 @@ class OaklandEventScraper(LegistarEventsScraper):
       #                 media_type="application/pdf")
 
       print(ocd_event)
+
       yield ocd_event
 
-      if index == 5:
-        break
+      """
+      if index < 5:
+        yield ocd_event
+      else:
+        raise StopIteration()
+      """
 
   def __parse_meeting_date(self, date_str, ical_url):
     event_date = self.toTime(date_str)
@@ -111,7 +119,7 @@ class OaklandEventScraper(LegistarEventsScraper):
     org_str = event_name.replace("Concurrent Meeting of the", '')
     org_tokens = org_str.split('and_the')
 
-    for org_token in org_tokens:
+    for org_token in org_tokens:      
       # org = None
       org_name = org_token
       org_type = 'committee'
