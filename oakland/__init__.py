@@ -14,7 +14,7 @@ class Oakland(Jurisdiction):
 
   scrapers = {
     "events": OaklandEventScraper,
-    #"people": OaklandPersonScraper,
+    "people": OaklandPersonScraper,
     # "bills": OaklandBillScraper,
     # "vote_events": OaklandVoteEventScraper,
   }

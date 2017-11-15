@@ -56,3 +56,6 @@ __pycache__
 
 # emacs
 *~
+
+.set_django_setting
+
