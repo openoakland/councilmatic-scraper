@@ -56,3 +56,9 @@ nosetests.xml
 .pydevproject
 
 __pycache__
+
+# emacs
+*~
+
+.set_django_setting
+
