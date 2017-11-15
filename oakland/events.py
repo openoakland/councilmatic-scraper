@@ -48,9 +48,12 @@ class OaklandEventScraper(LegistarEventsScraper):
 
       # add participating orgs
       participating_orgs = self.__parse_participating_orgs(event_name)
-
+      
       for org in participating_orgs:
+        org = org.strip()
+
         ocd_event.add_committee(name=org)
+        ocd_event.validate()
 
       # #add a person
       # ocd_event.add_person(name="Joe Smith", note="Hearing Chair")
@@ -80,10 +83,15 @@ class OaklandEventScraper(LegistarEventsScraper):
       #                 media_type="application/pdf")
 
       print(ocd_event)
+
       yield ocd_event
 
-      if index == 5:
-        break
+      """
+      if index < 5:
+        yield ocd_event
+      else:
+        raise StopIteration()
+      """
 
   def __parse_meeting_date(self, date_str, ical_url):
     event_date = self.toTime(date_str)
@@ -94,7 +102,13 @@ class OaklandEventScraper(LegistarEventsScraper):
     return event_date
 
   def __parse_meeting_location(self, location_str):
-    return location_str.split('\n')[0]
+    location_str = location_str.split('\n')[0]
+    
+    if location_str == '':
+      # Location is required but some events have no location given.
+      location_str = 'UNKNOWN'
+      
+    return location_str 
 
   def __parse_meeting_status(self, event_name, event_date, meeting_time_str):
     if event_name.lower().find('cancelled') or meeting_time_str.lower() in ('deferred', 'cancelled'):
@@ -106,22 +120,22 @@ class OaklandEventScraper(LegistarEventsScraper):
 
     return status
 
+  def __remove_multiple_spaces(self, text_str):
+    while "  " in text_str:
+      text_str = text_str.replace('  ', ' ')
+
+    return text_str
+      
   def __parse_participating_orgs(self, event_name):
     orgs = []
-    org_str = event_name.replace("Concurrent Meeting of the", '')
-    org_tokens = org_str.split('and_the')
-
-    for org_token in org_tokens:
-      # org = None
-      org_name = org_token
-      org_type = 'committee'
-
-      if org_token == 'City Council':
-        org_name = 'Oakland City Council'
-        org_type = 'legislature'
-
-      org_name = org_name.replace("- CANCELLED", '')
-      orgs.append(org_name)
-
+    
+    event_name = self.__remove_multiple_spaces(event_name).strip()
+    
+    if "City Council" in event_name:
+      orgs.append('Oakland City Council')
+    else:
+      event_name = event_name.replace("- CANCELLED", '').replace("- CANCELLATION", '')
+      orgs.append(event_name)
+    
     return orgs
 

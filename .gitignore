@@ -9,6 +9,9 @@ HearingSchedule.txt
 # vim
 *swp
 
+# emacs
+*~
+
 # Python objects
 *.py[cod]
 

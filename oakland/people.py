@@ -20,12 +20,13 @@ class OaklandPersonScraper(LegistarPersonScraper):
       assigned_district=self.__assign_district(councilman['Person Name'])
       start_date = self.toTime(councilman['Start Date']).date()
       end_date = self.toTime(councilman['End Date']).date()
+
       person = Person(name=councilman['Person Name'],
                 district=assigned_district,
                 role="Councilmember",
                 primary_org="legislature",
                 start_date=start_date.isoformat(),
-                 end_date=end_date)
+                end_date=end_date)
 
       if councilman["E-mail"]:
         person.add_contact_detail(type="email",
