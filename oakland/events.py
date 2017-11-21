@@ -20,12 +20,13 @@ class OaklandEventScraper(LegistarEventsScraper):
       event_name = event['Name'].replace('*', '')
       event_date = self.__parse_meeting_date(event['Meeting Date'], event['iCalendar']['url'])
       event_location = self.__parse_meeting_location(event['Meeting Location'])
+
+      status=self.__parse_meeting_status(event_name, event_date, event['Meeting Time'])
       ocd_event = Event(name=event_name,
                         start_date=event_date,
                         # description=event['Meeting\xa0Topic'], # Appears no description is available in Oakland Legistar
                         location_name=event_location,
-                        status=self.__parse_meeting_status(event_name, event_date, event['Meeting Time']))
-
+                        status=status)
 
       if event["Meeting Details"] != 'Not\xa0available' and event["Meeting Details"] != 'Meeting\xa0details':
         ocd_event.add_source(event["Meeting Details"]['url'], note='web')
@@ -111,7 +112,7 @@ class OaklandEventScraper(LegistarEventsScraper):
     return location_str 
 
   def __parse_meeting_status(self, event_name, event_date, meeting_time_str):
-    if event_name.lower().find('cancelled') or meeting_time_str.lower() in ('deferred', 'cancelled'):
+    if 'cancel' in event_name.lower() or meeting_time_str.lower() in ('deferred', 'cancelled'):
       status = 'cancelled'
     elif self.now() < event_date:
       status = 'confirmed'
