@@ -24,18 +24,6 @@ class OaklandBillScraper(LegistarBillScraper):
     
     TAG_RE = re.compile(r'<[^>]+>')
     
-    def scrape(self):
-        VOTE_OPTIONS = {'affirmative' : 'yes',
-                    'negative' : 'no',
-                    'conflict' : 'absent',
-                    'maternity': 'excused',
-                    'paternity' : 'excused',
-                    'bereavement': 'excused',
-                    'non-voting' : 'not voting',
-                    'jury duty' : 'excused',
-                    'absent' : 'absent',
-                    'medical' : 'excused'}
-
     SESSION_STARTS = (2014, 2010, 2006, 2002, 1996)
 
     def sessions(self, action_date) :
@@ -112,7 +100,7 @@ class OaklandBillScraper(LegistarBillScraper):
                 action_date = self.toDate(action['Date'])
                 responsible_org = action['Action\xa0By']
                 if responsible_org == 'City Council' :
-                    responsible_org = 'New York City Council'
+                    responsible_org = 'Oakland City Council'
                 elif responsible_org == 'Administration' :
                     responsible_org = 'Mayor'
                    
@@ -170,8 +158,7 @@ class OaklandBillScraper(LegistarBillScraper):
     # move this later
     def remove_tags(self, text):
         return self.TAG_RE.sub('', text)
-            
-            
+                        
     def _sponsors(self, sponsors) :
         if isinstance(sponsors, str):
             # there's only one name for sponsor
