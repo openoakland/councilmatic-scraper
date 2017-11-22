@@ -1,7 +1,7 @@
 # encoding=utf-8
 from pupa.scrape import Jurisdiction, Organization
 from .events import OaklandEventScraper
-# from .bills import OaklandBillScraper
+from .bills import OaklandBillScraper
 from .people import OaklandPersonScraper
 # from .vote_events import OaklandVoteEventScraper
 
@@ -13,12 +13,19 @@ class Oakland(Jurisdiction):
   url = "https://beta.oaklandca.gov/councils/city-council"
 
   scrapers = {
-    "events": OaklandEventScraper,
-    "people": OaklandPersonScraper,
-    # "bills": OaklandBillScraper,
+    #"events": OaklandEventScraper,
+    #"people": OaklandPersonScraper,
+    "bills": OaklandBillScraper,
     # "vote_events": OaklandVoteEventScraper,
   }
 
+  legislative_sessions = [{"identifier": str(start_year),
+                           "name": ("%s Regular Session" % str(start_year)),
+                           "start_date": ("%s-01-01" % str(start_year)),
+                           "end_date": ("%s-12-31" % str(start_year + 3))}
+                          for start_year
+                          in range(1978, 2015, 4)]
+  
   def get_organizations(self):
     org_names = [self.ORGANIZATION_NAME,
                  "Rules and Legislation Committee ", 
