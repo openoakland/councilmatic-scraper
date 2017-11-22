@@ -13,8 +13,8 @@ class Oakland(Jurisdiction):
   url = "https://beta.oaklandca.gov/councils/city-council"
 
   scrapers = {
-    #"events": OaklandEventScraper,
-    #"people": OaklandPersonScraper,
+    "events": OaklandEventScraper,
+    "people": OaklandPersonScraper,
     "bills": OaklandBillScraper,
     # "vote_events": OaklandVoteEventScraper,
   }
