@@ -28,8 +28,7 @@ class OaklandBillScraper(LegistarBillScraper):
 
     def sessions(self, action_date) :
         for session in self.SESSION_STARTS :
-            if action_date >= datetime(session, 1, 1, 
-                                       tzinfo=timezone(self.TIMEZONE)) :
+            if action_date >= datetime(session, 1, 1, tzinfo=timezone(self.TIMEZONE)) :
                 return str(session)
 
     def parse_date_str(self, date_str):
@@ -46,11 +45,12 @@ class OaklandBillScraper(LegistarBillScraper):
             
             leg_type = BILL_TYPES[leg_summary['Type']]
             file_number = leg_summary['File\xa0#']
+            title = self._parse_title(leg_summary['Title'])
             file_created_dt = self.parse_date_str(leg_summary['File\xa0Created'])
             legislative_session = self.sessions(file_created_dt)
             
             bill = Bill(identifier=file_number,
-                        title=leg_summary['Title'],
+                        title=title,
                         legislative_session=None,
                         classification=leg_type,
                         from_organization={"name":"Oakland City Council"})
@@ -158,7 +158,18 @@ class OaklandBillScraper(LegistarBillScraper):
     # move this later
     def remove_tags(self, text):
         return self.TAG_RE.sub('', text)
-                        
+
+    # TODO: this was from events.py.  Change to a mixin later?
+    def __remove_multiple_spaces(self, text_str):
+        while "  " in text_str:
+            text_str = text_str.replace('  ', ' ')
+            
+        return text_str
+
+    def _parse_title(self, raw_title):
+        parsed_title = raw_title.replace('Subject:', '')
+        return self.__remove_multiple_spaces(parsed_title).strip()
+    
     def _sponsors(self, sponsors) :
         if isinstance(sponsors, str):
             # there's only one name for sponsor
