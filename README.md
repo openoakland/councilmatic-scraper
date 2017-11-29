@@ -15,6 +15,12 @@ All Open Civic Data issues can be browsed and filed at [the Open Civic Data JIRA
 ## Development
 Requires python3, postgresql
 
+### Setup
+
+The easiest way to get running is with Docker. There is a Docker setup for the scraper here: https://github.com/ekkus93/councilmatic-docker
+
+If you prefer to use VirtualEnv or Anaconda on your machine follow the instructions below.
+
 ### Initialization
 Assuming that you want to have your database be called `opencivicdata` on your local machine
 
