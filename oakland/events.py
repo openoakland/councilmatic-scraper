@@ -2,6 +2,7 @@ import datetime
 
 from legistar.events import LegistarEventsScraper
 from pupa.scrape import Event, Organization
+from .util import *
 
 class OaklandEventScraper(LegistarEventsScraper):
   TIMEZONE = "US/Pacific"
@@ -48,8 +49,9 @@ class OaklandEventScraper(LegistarEventsScraper):
                                 media_type="video/mpeg")
 
       # add participating orgs
-      participating_orgs = self.__parse_participating_orgs(event_name)
-      
+      participating_orgs = [parse_org(event_name)]
+
+      # maybe this isn't necessary but leave it in case an event can have multiple committees in the future
       for org in participating_orgs:
         org = org.strip()
 
@@ -120,23 +122,4 @@ class OaklandEventScraper(LegistarEventsScraper):
       status = 'passed'
 
     return status
-
-  def __remove_multiple_spaces(self, text_str):
-    while "  " in text_str:
-      text_str = text_str.replace('  ', ' ')
-
-    return text_str
-      
-  def __parse_participating_orgs(self, event_name):
-    orgs = []
-    
-    event_name = self.__remove_multiple_spaces(event_name).strip()
-    
-    if "City Council" in event_name:
-      orgs.append('Oakland City Council')
-    else:
-      event_name = event_name.replace("- CANCELLED", '').replace("- CANCELLATION", '')
-      orgs.append(event_name)
-    
-    return orgs
 

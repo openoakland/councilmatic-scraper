@@ -1,4 +1,10 @@
 # encoding=utf-8
+import sys
+import os
+
+# put the oakland directory in the python path
+sys.path.append("%s/oakland" % os.getcwd())
+
 from pupa.scrape import Jurisdiction, Organization
 from .events import OaklandEventScraper
 from .bills import OaklandBillScraper
@@ -15,8 +21,7 @@ class Oakland(Jurisdiction):
   scrapers = {
     "events": OaklandEventScraper,
     "people": OaklandPersonScraper,
-    "bills": OaklandBillScraper,
-    # "vote_events": OaklandVoteEventScraper,
+    "bills": OaklandBillScraper
   }
 
   legislative_sessions = [{"identifier": str(start_year),
@@ -28,32 +33,33 @@ class Oakland(Jurisdiction):
   
   def get_organizations(self):
     org_names = [self.ORGANIZATION_NAME,
-                 "Rules and Legislation Committee ", 
-                 "Rules & Legislation Committee", "Public Safety Committee",
-                 "Life Enrichment Committee",
-                 "Community & Economic Development Committee",
-                 "Public Works Committee",
-                 "Finance & Management Committee", 
-                 "Oakland Redevelopment Successor Agency and the Community and Economic Development Committee",
-                 "Rules and Legislation Committee",
-                 "Special Community & Economic Development Committee",
-                 "Special Public Safety Committee",
                  "Community and Economic Development Committee",
-                 "Special Finance & Management Committee",
-                 "Oakland Redevelopment Successor Agency and Finance and Management Committee",
-                 "Special Oakland Redevelopment Successor Agency and Finance and Management Committee",
-                 "Finance and Management Committee",
-                 "Special Life Enrichment Committee",
-                 "Special Public Works Committee",
-                 "Office of the Mayor Annual Recess Agenda",
-                 "Special Education Partnership Committee and the Oakland Unified School District Board of Education",
-                 "Special Oakland Redevelopment Successor Agency and Community & Economic Development Committee",
-
+                 "Concurrent Meeting of the Oakland Redevelopment Successor Agency and Finance and Management Committee"
                  "Concurrent Meeting of the Oakland Redevelopment Successor Agency and the Community and Economic Development Committee",
+                 "Finance and Management Committee", 
+                 "Life Enrichment Committee",
+                 
+                 "Oakland Redevelopment Successor Agency and the Community and Economic Development Committee",
+                 "Oakland Redevelopment Successor Agency and Finance and Management Committee",
+                 "Office of the Mayor Annual Recess Agenda",
+                 "Public Safety Committee",                 
+                 "Public Works Committee",
+                 
+                 "Rules and Legislation Committee",
+                 "Special Community and Economic Development Committee",
                  "Special Concurrent Meeting of the Education Partnership Committee and the Oakland Unified School District Board of Education",
                  "Special Concurrent Meeting of the Oakland Redevelopment Successor Agency and Community & Economic Development Committee",
                  "Special Concurrent Meeting of the Oakland Redevelopment Successor Agency and Finance and Management Committee",
-                 "Concurrent Meeting of the Oakland Redevelopment Successor Agency and Finance and Management Committee"
+                 
+
+                 "Special Education Partnership Committee and the Oakland Unified School District Board of Education",
+                 "Special Finance and Management Committee",
+                 "Special Life Enrichment Committee",
+                 "Special Oakland Redevelopment Successor Agency and Community & Economic Development Committee",
+                 "Special Oakland Redevelopment Successor Agency and Finance and Management Committee",
+
+                 "Special Public Safety Committee",
+                 "Special Public Works Committee"
     ]
 
     for org_name in org_names:
@@ -76,3 +82,4 @@ class Oakland(Jurisdiction):
         org = Organization(name=org_name, classification='lower') 
       
       yield org
+

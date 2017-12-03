@@ -1,6 +1,8 @@
 from legistar.bills import LegistarBillScraper
 from pupa.scrape import Bill, VoteEvent
 from pupa.utils import _make_pseudo_id
+from .util import *
+
 from datetime import datetime
 from collections import defaultdict
 from pytz import timezone
@@ -60,18 +62,15 @@ class OaklandBillScraper(LegistarBillScraper):
             history = self.history(leg_summary['url'])
 
             if leg_details['Name']:
-                bill.add_title(leg_details['Name'],
-                               note='created by administrative staff')
+                bill.add_title(leg_details['Name'], note='created by administrative staff')
 
             if 'Summary' in leg_details :
                 bill.add_abstract(leg_details['Summary'], note='')
 
             bill.add_identifier(file_number, note='File number')
 
-            for sponsorship in self._sponsors(leg_details.get('Sponsors', [])) :
-                sponsor, sponsorship_type, primary = sponsorship
-                bill.add_sponsorship(sponsor, sponsorship_type,
-                                     'person', primary)
+            for sponsor, sponsorship_type, primary, entity_type in self._sponsors(leg_details.get('Sponsors', [])) :
+                bill.add_sponsorship(sponsor, sponsorship_type, entity_type, primary)
 
             
             for attachment in leg_details.get('Attachments', []) :
@@ -95,7 +94,7 @@ class OaklandBillScraper(LegistarBillScraper):
                 if not action_description :
                     continue
                     
-                action_class = ACTION_CLASSIFICATION[action_description]
+                action_class = ACTION_CLASSIFICATION[self._parse_action_description(action_description)]
 
                 action_date = self.toDate(action['Date'])
                 responsible_org = action['Action\xa0By']
@@ -104,9 +103,11 @@ class OaklandBillScraper(LegistarBillScraper):
                 elif responsible_org == 'Administration' :
                     responsible_org = 'Mayor'
                    
-                if responsible_org == 'Town Hall Meeting' :
+                if responsible_org == 'Town Hall Meeting':
                     continue
                 else :
+                    # TODO: figure out why billaction table isn't getting populated
+                    responsible_org = parse_org(responsible_org)
                     act = bill.add_action(action_description,
                                           action_date,
                                           organization={'name': responsible_org},
@@ -120,8 +121,10 @@ class OaklandBillScraper(LegistarBillScraper):
                         act.add_related_entity(referred_committee,
                                                'organization',
                                                entity_id = _make_pseudo_id(name=referred_committee))
-                        
-                    print("###in scraper - action_detail_url:", action_detail_url)
+
+                    # TODO: Voting events
+                    # comment out for not to test bills
+                    """    
                     result, votes = self.extractVotes(action_detail_url)
                     if result and votes :
                         action_vote = VoteEvent(legislative_session=bill.legislative_session, 
@@ -138,6 +141,7 @@ class OaklandBillScraper(LegistarBillScraper):
 
 
                         yield action_vote
+                    """
             
             text = self.text(leg_summary['url'])
 
@@ -147,56 +151,68 @@ class OaklandBillScraper(LegistarBillScraper):
             else :
                 bill.extras = {'local_classification' : leg_summary['Type']}
 
-            """
             if cnt > 100:
                 raise StopIteration
             else:
                 yield bill
             """
             yield bill
-
+            """
     # move this later
     def remove_tags(self, text):
         return self.TAG_RE.sub('', text)
-
-    # TODO: this was from events.py.  Change to a mixin later?
-    def __remove_multiple_spaces(self, text_str):
-        while "  " in text_str:
-            text_str = text_str.replace('  ', ' ')
-            
-        return text_str
-
-    def _parse_title(self, raw_title):
-        parsed_title = raw_title.replace('Subject:', '')
-        return self.__remove_multiple_spaces(parsed_title).strip()
     
+    def _parse_title(self, raw_title):
+        # match in between Subject and From
+        p = re.compile("Subject:(.*?)From:")
+        m = p.match(raw_title)
+        if m:
+            parsed_title = remove_multiple_spaces(m.group(1))
+            return parsed_title
+
+        # just make sure Subject is removed
+        parsed_title = raw_title.replace('Subject:', '')
+        return remove_multiple_spaces(parsed_title)
+
+    def _get_sponsor_entity_type(self, sponsor_name):
+        lower_sponsor_name = sponsor_name.lower()
+
+        for org_keyword in ['depart', 'office', 'commission']:
+            if org_keyword in lower_sponsor_name:
+                return 'organization'
+
+        return 'person'
+
     def _sponsors(self, sponsors) :
         if isinstance(sponsors, str):
-            # there's only one name for sponsor
-            primary = True
-            sponsorship_type = "Primary"
-            sponsor_name = sponsors
-            yield sponsor_name, sponsorship_type, primary
+            if self._get_sponsor_entity_type(sponsors) != 'organization' and ',' in sponsors:
+                sponsors = remove_multiple_spaces(sponsors)
+                sponsors = [{'label': sponsor.strip()} for sponsor in sponsors.split(',')]
+            else:
+                sponsors = [{'label': sponsors}]
 
-            # ok - this is a little funky. Need to do this because this is a generator
-            raise StopIteration
-        else:
-            for i, sponsor in enumerate(sponsors) :
-                if i == 0 :
-                    primary = True
-                    sponsorship_type = "Primary"
-                else :
-                    primary = False
-                    sponsorship_type = "Regular"
+        for i, sponsor in enumerate(sponsors) :
+            if i == 0 :
+                primary = True
+                sponsorship_type = "Primary"
+            else :
+                primary = False
+                sponsorship_type = "Regular"
             
-                sponsor_name = sponsor['label']
-                if sponsor_name.startswith(('(in conjunction with',
+            sponsor_name = sponsor['label']
+            if sponsor_name.startswith(('(in conjunction with',
                                         '(by request of')) :
-                    continue 
-
-                yield sponsor_name, sponsorship_type, primary
+                continue 
+            
+            entity_type = self._get_sponsor_entity_type(sponsor_name)
                 
+            yield sponsor_name, sponsorship_type, primary, entity_type
 
+    def _parse_action_description(self, action_description):
+        action_description = action_description.replace('*', '')
+
+        return remove_multiple_spaces(action_description)
+            
 BILL_TYPES = {'Informational Report': None,
               'City Resolution': 'resolution',
               'Report and Recommendation': None,
@@ -205,12 +221,33 @@ BILL_TYPES = {'Informational Report': None,
           }
 
 ACTION_CLASSIFICATION = {
-    'Scheduled': 'filing',
-    'In Committee': None,
-    'To be Scheduled': 'introduction',
-    'In Council': None,
+    'Accepted': 'passage',
+    'Accepted as Amended': 'amendment-passage',
+    'Adopted': 'passage',
+    'Adopted as Amended': 'amendment-passage',
+    'Approved': 'passage',
+    'Approved for Final Passage': 'passage',
+    'Approved as Amended': 'amendment-passage',
+    'Approved On Introduction and Scheduled for Final Passage': 'committee-passage',
+    'Approved As Amended On Introduction and Scheduled for Final Passage': 'amendment-passage',
+    'Approved the Recommendation of Staff, and Forward': 'committee-passage',
+    'Approved as Amended the Recommendation of Staff, and Forward': 'passage',
+    'Approve with the following amendments': 'amendment-passage',
+    'Continued': None,
+    'Denied': 'failure',
     'Filed': 'filing',
+    'Forwarded with No Recommendation': None,
+    'In Committee': None,
+    'In Council': None,
+    'No Action Taken': None,
+    'Not Adopted': 'failure',
     'Passed': 'passage',
+    'Received and Filed': 'filing',
+    'Received and Forwarded': 'filing',
+    'Referred': 'introduction',
+    'Rescheduled': 'withdrawal',
+    'Scheduled': 'filing',
+    'To be Scheduled': 'introduction',
     'Withdrawn and Rescheduled': 'withdrawal',
-    'Approved the Recommendation of Staff, and Forward': 'committee-passage'
+    'Withdrawn with No New Date': 'withdrawal'
 }
