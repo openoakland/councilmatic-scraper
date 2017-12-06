@@ -50,8 +50,9 @@ class Oakland(Jurisdiction):
                  "Special Concurrent Meeting of the Education Partnership Committee and the Oakland Unified School District Board of Education",
                  "Special Concurrent Meeting of the Oakland Redevelopment Successor Agency and Community & Economic Development Committee",
                  "Special Concurrent Meeting of the Oakland Redevelopment Successor Agency and Finance and Management Committee",
+                 "Special Concurrent Meeting of the Oakland Redevelopment Successor Agency and Community and Economic Development Committee",
                  
-
+                 "Special Education Partnership Committee",
                  "Special Education Partnership Committee and the Oakland Unified School District Board of Education",
                  "Special Finance and Management Committee",
                  "Special Life Enrichment Committee",

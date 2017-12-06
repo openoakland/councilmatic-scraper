@@ -158,6 +158,7 @@ class OaklandBillScraper(LegistarBillScraper):
             """
             yield bill
             """
+            
     # move this later
     def remove_tags(self, text):
         return self.TAG_RE.sub('', text)
@@ -225,14 +226,16 @@ ACTION_CLASSIFICATION = {
     'Accepted as Amended': 'amendment-passage',
     'Adopted': 'passage',
     'Adopted as Amended': 'amendment-passage',
-    'Approved': 'passage',
-    'Approved for Final Passage': 'passage',
-    'Approved as Amended': 'amendment-passage',
-    'Approved On Introduction and Scheduled for Final Passage': 'committee-passage',
-    'Approved As Amended On Introduction and Scheduled for Final Passage': 'amendment-passage',
-    'Approved the Recommendation of Staff, and Forward': 'committee-passage',
-    'Approved as Amended the Recommendation of Staff, and Forward': 'passage',
+    'Approved as Amended on Introduction for Final Passage': 'amendment-passage',
     'Approve with the following amendments': 'amendment-passage',
+    'Approve as Submitted': 'passage',
+    'Approved': 'passage',
+    'Approved as Amended': 'amendment-passage',
+    'Approved as Amended the Recommendation of Staff, and Forward': 'passage',
+    'Approved As Amended On Introduction and Scheduled for Final Passage': 'amendment-passage',    
+    'Approved for Final Passage': 'passage',
+    'Approved On Introduction and Scheduled for Final Passage': 'committee-passage',
+    'Approved the Recommendation of Staff, and Forward': 'committee-passage',
     'Continued': None,
     'Denied': 'failure',
     'Filed': 'filing',
