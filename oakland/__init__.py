@@ -30,18 +30,36 @@ class Oakland(Jurisdiction):
                            "end_date": ("%s-12-31" % str(start_year + 3))}
                           for start_year
                           in range(1978, 2015, 4)]
-  
+
+  # TODO: should organizations get added to the database on a get??? Maybe, there's a better place
+  # for this like in the constructor. New organizations seem to get created all the time. Maybe, they
+  # should get dynamically created during scrape() for events and bills.
   def get_organizations(self):
     org_names = [self.ORGANIZATION_NAME,
                  "Community and Economic Development Committee",
                  "Concurrent Meeting of the Oakland Redevelopment Successor Agency and Finance and Management Committee"
                  "Concurrent Meeting of the Oakland Redevelopment Successor Agency and the Community and Economic Development Committee",
-                 "Finance and Management Committee", 
+                 "Economic and Workforce Development Department",
+                 "Finance and Management Committee",
+                 "Finance Department",
+                 "Human Resources Management Department",
+                 "Human Services Department",
+                 "Human Services Department, Housing And Community Development Department",
+                 "Information Technology Department",
                  "Life Enrichment Committee",
-                 
+
+                 "Oakland Fire Department",
+                 "Oakland Parks and Recreation Department",
+                 "Oakland Police Department",
+                 "Oakland Public Works Department",
+                 "Oakland Public Works Department, Transportation Department",
                  "Oakland Redevelopment Successor Agency and the Community and Economic Development Committee",
                  "Oakland Redevelopment Successor Agency and Finance and Management Committee",
+                 "Office Of The City Administrator",
+                 "Office Of The City Attorney",
+                 "Office Of The Mayor",
                  "Office of the Mayor Annual Recess Agenda",
+                 "Planning and Building Department",
                  "Public Safety Committee",                 
                  "Public Works Committee",
                  
@@ -60,7 +78,9 @@ class Oakland(Jurisdiction):
                  "Special Oakland Redevelopment Successor Agency and Finance and Management Committee",
 
                  "Special Public Safety Committee",
-                 "Special Public Works Committee"
+                 "Special Public Works Committee",
+                 "Special Rules and Legislation Committee",
+                 "Transportation Department"
     ]
 
     for org_name in org_names:

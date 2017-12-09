@@ -37,7 +37,10 @@ def parse_org(org_name):
   org_name = org_name.replace('&', ' and ')
     
   org_name = remove_multiple_spaces(org_name)
-    
+
+  # remove final ','
+  org_name = org_name.rstrip(',')
+  
   if "City Council" in org_name:
     org_name = 'Oakland City Council'
   else:

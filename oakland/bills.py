@@ -43,11 +43,23 @@ class OaklandBillScraper(LegistarBillScraper):
         cnt = 0
         
         for leg_summary in self.legislation(created_after=datetime(2014, 1, 1)):
+        #for leg_summary in self.legislation(search_text='Resolution Of IntentionTo Form The Koreatown/Northgate Community', created_after=datetime(2014, 5, 1)):
+        #for leg_summary in self.legislation(created_after=datetime(2017, 5, 1)):
             cnt += 1
+
+            # get legDetails because sometimes title is missing from leg_summary
+            leg_details = self.legDetails(leg_summary['url'])
             
             leg_type = BILL_TYPES[leg_summary['Type']]
             file_number = leg_summary['File\xa0#']
+
             title = self._parse_title(leg_summary['Title'])
+            if title == '':
+                # if title is missing from leg_summary, try to get it from leg_details
+                title = self._parse_title(leg_details['Title'])
+                
+            assert (title != '')
+
             file_created_dt = self.parse_date_str(leg_summary['File\xa0Created'])
             legislative_session = self.sessions(file_created_dt)
             
@@ -58,7 +70,6 @@ class OaklandBillScraper(LegistarBillScraper):
                         from_organization={"name":"Oakland City Council"})
             bill.add_source(leg_summary['url'], note='web')
 
-            leg_details = self.legDetails(leg_summary['url'])
             history = self.history(leg_summary['url'])
 
             if leg_details['Name']:
@@ -95,19 +106,12 @@ class OaklandBillScraper(LegistarBillScraper):
                     continue
                     
                 action_class = ACTION_CLASSIFICATION[self._parse_action_description(action_description)]
-
                 action_date = self.toDate(action['Date'])
-                responsible_org = action['Action\xa0By']
-                if responsible_org == 'City Council' :
-                    responsible_org = 'Oakland City Council'
-                elif responsible_org == 'Administration' :
-                    responsible_org = 'Mayor'
+                responsible_org = self._parse_responsible_org(action['Action\xa0By'])
                    
                 if responsible_org == 'Town Hall Meeting':
                     continue
-                else :
-                    # TODO: figure out why billaction table isn't getting populated
-                    responsible_org = parse_org(responsible_org)
+                else :                    
                     act = bill.add_action(action_description,
                                           action_date,
                                           organization={'name': responsible_org},
@@ -117,7 +121,8 @@ class OaklandBillScraper(LegistarBillScraper):
                     action_detail_url = action['Action\xa0Details']['url']
                     if action_class == 'referral-committee' :
                         action_details = self.actionDetails(action_detail_url)
-                        referred_committee = action_details['Action text'].rsplit(' to the ', 1)[-1]
+                        referred_committee = self._parse_referred_committee(action_details['Action text'])
+                        
                         act.add_related_entity(referred_committee,
                                                'organization',
                                                entity_id = _make_pseudo_id(name=referred_committee))
@@ -151,13 +156,13 @@ class OaklandBillScraper(LegistarBillScraper):
             else :
                 bill.extras = {'local_classification' : leg_summary['Type']}
 
+            """
             if cnt > 100:
                 raise StopIteration
             else:
                 yield bill
             """
             yield bill
-            """
             
     # move this later
     def remove_tags(self, text):
@@ -165,15 +170,26 @@ class OaklandBillScraper(LegistarBillScraper):
     
     def _parse_title(self, raw_title):
         # match in between Subject and From
-        p = re.compile("Subject:(.*?)From:")
+        p = re.compile("Subject:(.*?)Fro+m:", re.DOTALL | re.MULTILINE)
         m = p.match(raw_title)
         if m:
             parsed_title = remove_multiple_spaces(m.group(1))
-            return parsed_title
+        else:
+            # match in between Subject and From
+            p = re.compile("Subject:(.*?)$", re.DOTALL | re.MULTILINE)
+            m = p.match(raw_title)
+            if m:
+                parsed_title = remove_multiple_spaces(m.group(1))
+            else:
+                parsed_title = remove_multiple_spaces(raw_title)
 
-        # just make sure Subject is removed
-        parsed_title = raw_title.replace('Subject:', '')
-        return remove_multiple_spaces(parsed_title)
+        if parsed_title == '':
+            # handle case where there's a "Subject:" and a "From:" but the subject is empty
+            parsed_title = remove_multiple_spaces(raw_title)
+        else:
+            assert ("Subject:" not in parsed_title), "###_parse_title - raw_title: %s" % raw_title
+
+        return parsed_title
 
     def _get_sponsor_entity_type(self, sponsor_name):
         lower_sponsor_name = sponsor_name.lower()
@@ -185,12 +201,16 @@ class OaklandBillScraper(LegistarBillScraper):
         return 'person'
 
     def _sponsors(self, sponsors) :
+        def clean_sponsor(sponsor):
+            sponsor = sponsor.replace('&', ' and ')
+            return remove_multiple_spaces(sponsor)
+            
         if isinstance(sponsors, str):
             if self._get_sponsor_entity_type(sponsors) != 'organization' and ',' in sponsors:
                 sponsors = remove_multiple_spaces(sponsors)
-                sponsors = [{'label': sponsor.strip()} for sponsor in sponsors.split(',')]
+                sponsors = [{'label': clean_sponsor(sponsor)} for sponsor in sponsors.split(',')]
             else:
-                sponsors = [{'label': sponsors}]
+                sponsors = [{'label': clean_sponsor(sponsors)}]
 
         for i, sponsor in enumerate(sponsors) :
             if i == 0 :
@@ -213,7 +233,34 @@ class OaklandBillScraper(LegistarBillScraper):
         action_description = action_description.replace('*', '')
 
         return remove_multiple_spaces(action_description)
-            
+
+    def _parse_responsible_org(self, raw_responsible_org):
+        if raw_responsible_org == 'City Council' :
+            return 'Oakland City Council'
+        elif raw_responsible_org == 'Administration' :
+            return 'Mayor'
+
+        responsible_org = parse_org(raw_responsible_org)
+
+        if responsible_org == '':
+            # Sometimes the responsible_org is missing. Default to Oakland City Council.
+            # i.e. https://oakland.legistar.com/LegislationDetail.aspx?ID=3033419&GUID=F2ABDA03-BFBC-4663-84CC-8AF0B2C15C08&Options=ID|Text|&Search=Of+Intention+To+Form+The+Koreatown%2fNorthgate+Community+Benefit+District+2017
+            # 5/16/2017
+            responsible_org = 'Oakland City Council'
+
+        assert (responsible_org != '')
+        return responsible_org
+
+    def _parse_referred_committee(self, raw_reffered_committed):
+        referred_committee = parse_org(raw_reffered_committee.rsplit(' to the ', 1)[-1])
+
+        if referred_committee == '':
+            # default to Oakland City Council
+            referred_committee = 'Oakland City Council'
+
+        assert (referred_committee != '')
+        return referred_committee
+    
 BILL_TYPES = {'Informational Report': None,
               'City Resolution': 'resolution',
               'Report and Recommendation': None,
