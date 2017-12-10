@@ -15,8 +15,8 @@ class OaklandEventScraper(LegistarEventsScraper):
 
     for event, agenda in self.events(since=current_year):
       index += 1
-      print(event)
-      print(agenda)
+      print("###scrape - event:", event)
+      print("###scrape - agenda:", agenda)
 
       event_name = event['Name'].replace('*', '')
       event_date = self.__parse_meeting_date(event['Meeting Date'], event['iCalendar']['url'])
@@ -85,16 +85,17 @@ class OaklandEventScraper(LegistarEventsScraper):
       #                 url="http://example.com/hearing/testimony.pdf",
       #                 media_type="application/pdf")
 
-      print(ocd_event)
-
-      yield ocd_event
+      print("###scraper - ocd_event:", ocd_event)
 
       """
+      yield ocd_event
+      """
+
+      # debugging only
       if index < 5:
         yield ocd_event
       else:
         raise StopIteration()
-      """
 
   def __parse_meeting_date(self, date_str, ical_url):
     event_date = self.toTime(date_str)

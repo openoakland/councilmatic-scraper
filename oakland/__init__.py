@@ -20,8 +20,8 @@ class Oakland(Jurisdiction):
 
   scrapers = {
     "events": OaklandEventScraper,
-    "people": OaklandPersonScraper,
-    "bills": OaklandBillScraper
+    #"people": OaklandPersonScraper,
+    #"bills": OaklandBillScraper
   }
 
   legislative_sessions = [{"identifier": str(start_year),
