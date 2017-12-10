@@ -16,9 +16,12 @@ class OaklandEventScraper(LegistarEventsScraper):
     for event, agenda in self.events(since=current_year):
       index += 1
       print("###scrape - event:", event)
+      print("###scrape - event['Meeting Location']:", event['Meeting Location'])
       print("###scrape - agenda:", agenda)
 
-      event_name = event['Name'].replace('*', '')
+      #event_name = event['Name'].replace('*', '')
+      event_name = self.__parse_event_name(event['Name'])
+      
       event_date = self.__parse_meeting_date(event['Meeting Date'], event['iCalendar']['url'])
       event_location = self.__parse_meeting_location(event['Meeting Location'])
 
@@ -97,6 +100,9 @@ class OaklandEventScraper(LegistarEventsScraper):
       else:
         raise StopIteration()
 
+  def __parse_event_name(self, raw_event_name):
+    return raw_event_name.replace('*', '')
+      
   def __parse_meeting_date(self, date_str, ical_url):
     event_date = self.toTime(date_str)
     response = self.get(ical_url, verify=False)
