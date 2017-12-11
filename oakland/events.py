@@ -39,7 +39,13 @@ class OaklandEventScraper(LegistarEventsScraper):
 
       self.addDocs(ocd_event, event, 'Agenda')
       self.addDocs(ocd_event, event, 'Minutes')
-      # This code is per documentation; line above is from another city's code
+
+      if event['Minutes'] != 'Not\xa0available':
+        ocd_event.add_media_link(note=event['Minutes']['label'],
+                             url=event['Minutes']['url'],
+                             media_type="application/pdf")
+
+    # This code is per documentation; line above is from another city's code
       # #add a pdf of meeting minutes
       # ocd_event.add_media_link(note="Meeting minutes",
       #                 url="http://example.com/hearing/minutes.pdf",
@@ -61,8 +67,8 @@ class OaklandEventScraper(LegistarEventsScraper):
         ocd_event.add_committee(name=org)
         ocd_event.validate()
 
-      # #add a person
-      # ocd_event.add_person(name="Joe Smith", note="Hearing Chair")
+      #add a person
+      #ocd_event.add_person(name="Dan Kalb", note="Hearing Chair")
 
       # #add an agenda item to this event
       # a = ocd_event.add_agenda_item(description="Testimony from concerned citizens")
@@ -95,7 +101,7 @@ class OaklandEventScraper(LegistarEventsScraper):
       """
 
       # debugging only
-      if index < 5:
+      if index < 30:
         yield ocd_event
       else:
         raise StopIteration()

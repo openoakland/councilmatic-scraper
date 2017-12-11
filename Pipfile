@@ -1,0 +1,15 @@
+[[source]]
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+
+[packages]
+
+"61dd62f" = {file = "https://github.com/opencivicdata/python-opencivicdata-django/zipball/master/"}
+"52420d4" = {file = "https://github.com/datamade/pupa/zipball/master"}
+lxml = "*"
+sh = "*"
+"cbce8e7" = {file = "https://github.com/opencivicdata/python-legistar-scraper/zipball/master"}
+requests = "*"
