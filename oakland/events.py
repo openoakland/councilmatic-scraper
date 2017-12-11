@@ -4,6 +4,7 @@ from legistar.events import LegistarEventsScraper
 from pupa.scrape import Event, Organization
 from .util import *
 
+
 class OaklandEventScraper(LegistarEventsScraper):
   TIMEZONE = "US/Pacific"
   EVENTSPAGE = "https://oakland.legistar.com/Calendar.aspx"
@@ -40,7 +41,7 @@ class OaklandEventScraper(LegistarEventsScraper):
       self.addDocs(ocd_event, event, 'Agenda')
       self.addDocs(ocd_event, event, 'Minutes')
 
-      if event['Minutes'] != 'Not\xa0available':
+      if event['Minutes'] != 'Not\xa0available':      #Adding Minutes
         ocd_event.add_media_link(note=event['Minutes']['label'],
                              url=event['Minutes']['url'],
                              media_type="application/pdf")
