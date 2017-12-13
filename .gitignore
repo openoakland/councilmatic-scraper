@@ -64,3 +64,10 @@ __pycache__
 
 # pytest
 htmlcov
+
+# Mac stuff
+.DS_Store
+
+# Intellij
+.idea
+.cache
