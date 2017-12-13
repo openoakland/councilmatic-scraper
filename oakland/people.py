@@ -17,6 +17,7 @@ class OaklandPersonScraper(LegistarPersonScraper):
     print(self.jurisdiction)
 
     for councilman in self.councilMembers():
+      print("###scrape - counclman:", councilman)
       assigned_district=self.__assign_district(councilman['Person Name'])
       start_date = self.toTime(councilman['Start Date']).date()
       end_date = self.toTime(councilman['End Date']).date()
@@ -36,8 +37,8 @@ class OaklandPersonScraper(LegistarPersonScraper):
       # Assigning
       website_url = self.MEMBERLIST
 
-      if councilman['Web site']:
-        councilman['Web site']['url']
+      if councilman['Web Site']:
+        website_url = councilman['Web Site']['url']
 
       person.add_link(website_url, note='web site')
       person.add_source(website_url)

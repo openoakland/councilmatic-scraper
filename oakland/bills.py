@@ -8,6 +8,8 @@ from collections import defaultdict
 from pytz import timezone
 import re
 
+import pickle
+
 class OaklandBillScraper(LegistarBillScraper):
     LEGISLATION_URL = 'https://oakland.legistar.com/Legislation.aspx'
     BASE_URL = "https://oakland.legistar.com/"
@@ -45,8 +47,19 @@ class OaklandBillScraper(LegistarBillScraper):
         for leg_summary in self.legislation(created_after=datetime(2014, 1, 1)):
         #for leg_summary in self.legislation(search_text='Resolution Of IntentionTo Form The Koreatown/Northgate Community', created_after=datetime(2014, 5, 1)):
         #for leg_summary in self.legislation(created_after=datetime(2017, 5, 1)):
-            cnt += 1
+            for i in range(5):
+                pickle.dump(leg_summary, open( "oakland/tests/data/leg_summary/leg_summary_%d.p" % i, "wb" ) )
 
+                yield self.__process_legistlation(leg_summary)
+
+            raise StopIteration
+
+        
+            """
+            yield self.__process_legistlation(leg_summary)
+            """
+            
+    def __process_legistlation(self, leg_summary):
             # get legDetails because sometimes title is missing from leg_summary
             leg_details = self.legDetails(leg_summary['url'])
             
@@ -156,12 +169,6 @@ class OaklandBillScraper(LegistarBillScraper):
             else :
                 bill.extras = {'local_classification' : leg_summary['Type']}
 
-            """
-            if cnt > 100:
-                raise StopIteration
-            else:
-                yield bill
-            """
             yield bill
             
     # move this later

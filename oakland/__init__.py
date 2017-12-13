@@ -9,7 +9,6 @@ from pupa.scrape import Jurisdiction, Organization
 from .events import OaklandEventScraper
 from .bills import OaklandBillScraper
 from .people import OaklandPersonScraper
-# from .vote_events import OaklandVoteEventScraper
 
 class Oakland(Jurisdiction):
   ORGANIZATION_NAME = "Oakland City Council"
@@ -42,6 +41,8 @@ class Oakland(Jurisdiction):
                  "Economic and Workforce Development Department",
                  "Finance and Management Committee",
                  "Finance Department",
+                 "Housing And Community Development Department",
+                 
                  "Human Resources Management Department",
                  "Human Services Department",
                  "Human Services Department, Housing And Community Development Department",
@@ -60,6 +61,7 @@ class Oakland(Jurisdiction):
                  "Office Of The Mayor",
                  "Office of the Mayor Annual Recess Agenda",
                  "Planning and Building Department",
+                 "Public Ethics Commission",
                  "Public Safety Committee",                 
                  "Public Works Committee",
                  
