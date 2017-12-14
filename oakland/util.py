@@ -1,3 +1,5 @@
+import re
+
 def remove_multiple_spaces(text_str):
   """
   Remove multiple spaces from string and trim white spaces from front and back.
@@ -49,3 +51,7 @@ def parse_org(org_name):
       
   return org_name
   
+def remove_tags(text):
+  TAG_RE = re.compile(r'<[^>]+>')
+  
+  return TAG_RE.sub('', text)

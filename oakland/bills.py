@@ -26,20 +26,7 @@ class OaklandBillScraper(LegistarBillScraper):
                     'absent' : 'absent',
                     'medical' : 'excused'}
     
-    TAG_RE = re.compile(r'<[^>]+>')
-    
     SESSION_STARTS = (2014, 2010, 2006, 2002, 1996)
-
-    def sessions(self, action_date) :
-        for session in self.SESSION_STARTS :
-            if action_date >= datetime(session, 1, 1, tzinfo=timezone(self.TIMEZONE)) :
-                return str(session)
-
-    def parse_date_str(self, date_str):
-        dt = datetime.strptime(date_str, '%m/%d/%Y')
-        dt = dt.replace(tzinfo=timezone(self.TIMEZONE))
-
-        return dt
 
     def scrape(self):
         cnt = 0
@@ -47,19 +34,20 @@ class OaklandBillScraper(LegistarBillScraper):
         for leg_summary in self.legislation(created_after=datetime(2014, 1, 1)):
         #for leg_summary in self.legislation(search_text='Resolution Of IntentionTo Form The Koreatown/Northgate Community', created_after=datetime(2014, 5, 1)):
         #for leg_summary in self.legislation(created_after=datetime(2017, 5, 1)):
-            for i in range(5):
-                pickle.dump(leg_summary, open( "oakland/tests/data/leg_summary/leg_summary_%d.p" % i, "wb" ) )
+            cnt += 1
 
-                yield self.__process_legistlation(leg_summary)
+            print("###scrape - leg_summary:", leg_summary)
 
-            raise StopIteration
+            if cnt > 5:
+                raise StopIteration
+            else:
+                yield self._process_legistlation(leg_summary)
 
-        
             """
-            yield self.__process_legistlation(leg_summary)
+            yield self._process_legistlation(leg_summary)
             """
             
-    def __process_legistlation(self, leg_summary):
+    def _process_legistlation(self, leg_summary):
             # get legDetails because sometimes title is missing from leg_summary
             leg_details = self.legDetails(leg_summary['url'])
             
@@ -73,8 +61,8 @@ class OaklandBillScraper(LegistarBillScraper):
                 
             assert (title != '')
 
-            file_created_dt = self.parse_date_str(leg_summary['File\xa0Created'])
-            legislative_session = self.sessions(file_created_dt)
+            file_created_dt = self._parse_date_str(leg_summary['File\xa0Created'])
+            legislative_session = self._sessions(file_created_dt)
             
             bill = Bill(identifier=file_number,
                         title=title,
@@ -109,7 +97,7 @@ class OaklandBillScraper(LegistarBillScraper):
                 earliest_action = min(self.toTime(action['Date']) 
                                       for action in history)
 
-                bill.legislative_session = self.sessions(earliest_action)
+                bill.legislative_session = self._sessions(earliest_action)
             else :
                 bill.legislative_session = str(self.SESSION_STARTS[0])
 
@@ -165,16 +153,23 @@ class OaklandBillScraper(LegistarBillScraper):
 
             if text :
                 bill.extras = {'local_classification' : leg_summary['Type'],
-                               'full_text' : self.remove_tags(text)}
+                               'full_text' : remove_tags(text)}
             else :
                 bill.extras = {'local_classification' : leg_summary['Type']}
 
             yield bill
+
+    def _sessions(self, action_date) :
+        for session in self.SESSION_STARTS :
+            if action_date >= datetime(session, 1, 1, tzinfo=timezone(self.TIMEZONE)) :
+                return str(session)
+
+    def _parse_date_str(self, date_str):
+        dt = datetime.strptime(date_str, '%m/%d/%Y')
+        dt = dt.replace(tzinfo=timezone(self.TIMEZONE))
+
+        return dt
             
-    # move this later
-    def remove_tags(self, text):
-        return self.TAG_RE.sub('', text)
-    
     def _parse_title(self, raw_title):
         # match in between Subject and From
         p = re.compile("Subject:(.*?)Fro+m:", re.DOTALL | re.MULTILINE)

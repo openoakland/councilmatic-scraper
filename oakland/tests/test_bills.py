@@ -1,39 +1,95 @@
 import os
 import pytest
 
-from pupa.scrape import Bill as ScrapeBill
-from pupa.scrape import Person as ScrapePerson
-from pupa.scrape import Organization as ScrapeOrganization
-from pupa.importers import BillImporter, OrganizationImporter, PersonImporter
-from opencivicdata.core.models import Jurisdiction, Person, Organization, Membership, Division
-from opencivicdata.legislative.models import Bill
+from pupa.scrape.bill import Bill
 
+from oakland import Oakland
 from oakland.bills import OaklandBillScraper
 
-def create_jurisdiction():
-    Division.objects.create("ocd-division/country:us/state:ca/place:oakland", name='USA')
-    j = Jurisdiction.objects.create(id='jid', division_id='ocd-division/country:us')
-    j.legislative_sessions.create(identifier='1899', name='1899')
-    j.legislative_sessions.create(identifier='1900', name='1900')
+import pickle
 
-    return j
+def load_jurisdiction():
+    juris = pickle.load( open( "tests/data/juris/juris.p", "rb" ) )
+    print("###load_jurisdiction:", juris)
 
-def create_org():
-    return Organization.objects.create(id='org-id', name='House', classification='lower',
-                                       jurisdiction_id='jid')    
+    return juris
 
+def create_bill_scraper():
+    jurisdiction = load_jurisdiction()
+    datadir = os.path.join(os.getcwd(), 'tests/_data')
+    return OaklandBillScraper(jurisdiction, datadir)
+
+def load_leg_summaries():
+    leg_summaries = []
+    for i in range(7):
+        curr_leg_summary = pickle.load(open("tests/data/leg_summary/leg_summary_%d.p" % i, "rb"))
+        leg_summaries.append(curr_leg_summary)
+
+    return leg_summaries
+    
+obs = create_bill_scraper()
+leg_summaries = load_leg_summaries()
+
+# TODO: implement unit test
+def test_sessions():
+    assert False
+
+def test_parse_date_str():
+    leg_summary = leg_summaries[0]
+    raw_file_created = leg_summary['File\xa0Created']
+    print("###test_parse_date_str - raw_file_created:", raw_file_created)
+    
+    parsed_file_created = obs._parse_date_str(raw_file_created)
+    print("###test_parse_date_str - parsed_file_created:", type(parsed_file_created), parsed_file_created)
+    
+    assert parsed_file_created.year == 2017 and parsed_file_created.month == 11 and parsed_file_created.day == 30
+
+# TODO: implement unit test
+def test_parse_title():
+    assert False
+
+# TODO: implement unit test    
+def test_get_sponsor_entity_type():
+    assert False
+
+# TODO: implement unit test    
+def test_sponsors():
+    assert False
+
+# TODO: implement unit test    
+def test_parse_action_description():
+    assert False
+
+# TODO: implement unit test    
+def test_parse_responsible_org():
+    assert False
+
+# TODO: implement unit test    
+def test_parse_referred_committee():
+    assert False
 
 @pytest.mark.django_db
-def test_remove_tags():
-    jurisdiction = create_jurisdiction()
-    datadir = os.path.join(os.getcwd(), 'tests/_data')
-    obs = OaklandBillScraper(jurisdiction, datadir)
+def test_process_legistlation():    
+    print("###test_process_legistlation - leg_summaries[0]:", leg_summaries[0])
 
-    tag_text = "<foo>bar</foo>"
-    tagless_text = "bar"
+    print("###test_process_legistlation - obs:", type(obs), obs)
+    #print("###test_process_legistlation - obs:", dir(obs))
+    bill = obs._process_legistlation(leg_summaries[0]).__next__()
 
-    # TODO: Maybe remove_tags() should be changed to a class method so an OaklandBillScraper object doesn't need to be instantiated.
-    assert obs.remove_tags(tag_text) == tagless_text
+    print("###test_process_legistlation - bill:", type(bill), bill)    
+    assert isinstance(bill, Bill)
 
+    #print("###test_process_legistlation - bill:", dir(bill))
+
+    for attrib_name in [x for x in dir(bill) if not x.startswith('_') and not x.startswith('add_')]:
+        print("###%s:" % attrib_name, getattr(bill, attrib_name))
+
+    # TODO: add more assertions
+    assert len(bill.classification) == 1 and bill.classification[0] == 'resolution'
+    assert len(bill.documents) == 1 and bill.documents[0]['note'] == 'View Report'
+    assert bill.identifier == '17-0451'
+    assert bill.legislative_session == '2014'
+    assert bill.title == 'Cannabis Regulatory Commission'
+    
 
     
