@@ -1,18 +1,12 @@
 import os
 import pytest
+import pickle
 
 from pupa.scrape.bill import Bill
 
 from oakland import Oakland
 from oakland.bills import OaklandBillScraper
-
-import pickle
-
-def load_jurisdiction():
-    juris = pickle.load( open( "tests/data/juris/juris.p", "rb" ) )
-    print("###load_jurisdiction:", juris)
-
-    return juris
+from .util import *
 
 def create_bill_scraper():
     jurisdiction = load_jurisdiction()

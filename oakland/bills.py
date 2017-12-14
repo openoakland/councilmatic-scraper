@@ -8,8 +8,6 @@ from collections import defaultdict
 from pytz import timezone
 import re
 
-import pickle
-
 class OaklandBillScraper(LegistarBillScraper):
     LEGISLATION_URL = 'https://oakland.legistar.com/Legislation.aspx'
     BASE_URL = "https://oakland.legistar.com/"
@@ -48,116 +46,116 @@ class OaklandBillScraper(LegistarBillScraper):
             """
             
     def _process_legistlation(self, leg_summary):
-            # get legDetails because sometimes title is missing from leg_summary
-            leg_details = self.legDetails(leg_summary['url'])
+        # get legDetails because sometimes title is missing from leg_summary
+        leg_details = self.legDetails(leg_summary['url'])
             
-            leg_type = BILL_TYPES[leg_summary['Type']]
-            file_number = leg_summary['File\xa0#']
+        leg_type = BILL_TYPES[leg_summary['Type']]
+        file_number = leg_summary['File\xa0#']
 
-            title = self._parse_title(leg_summary['Title'])
-            if title == '':
-                # if title is missing from leg_summary, try to get it from leg_details
-                title = self._parse_title(leg_details['Title'])
+        title = self._parse_title(leg_summary['Title'])
+        if title == '':
+            # if title is missing from leg_summary, try to get it from leg_details
+            title = self._parse_title(leg_details['Title'])
                 
-            assert (title != '')
+        assert (title != '')
 
-            file_created_dt = self._parse_date_str(leg_summary['File\xa0Created'])
-            legislative_session = self._sessions(file_created_dt)
+        file_created_dt = self._parse_date_str(leg_summary['File\xa0Created'])
+        legislative_session = self._sessions(file_created_dt)
             
-            bill = Bill(identifier=file_number,
-                        title=title,
-                        legislative_session=None,
-                        classification=leg_type,
-                        from_organization={"name":"Oakland City Council"})
-            bill.add_source(leg_summary['url'], note='web')
+        bill = Bill(identifier=file_number,
+                    title=title,
+                    legislative_session=None,
+                    classification=leg_type,
+                    from_organization={"name":"Oakland City Council"})
+        bill.add_source(leg_summary['url'], note='web')
+        
+        history = self.history(leg_summary['url'])
 
-            history = self.history(leg_summary['url'])
+        if leg_details['Name']:
+            bill.add_title(leg_details['Name'], note='created by administrative staff')
 
-            if leg_details['Name']:
-                bill.add_title(leg_details['Name'], note='created by administrative staff')
+        if 'Summary' in leg_details :
+            bill.add_abstract(leg_details['Summary'], note='')
 
-            if 'Summary' in leg_details :
-                bill.add_abstract(leg_details['Summary'], note='')
+        bill.add_identifier(file_number, note='File number')
 
-            bill.add_identifier(file_number, note='File number')
-
-            for sponsor, sponsorship_type, primary, entity_type in self._sponsors(leg_details.get('Sponsors', [])) :
-                bill.add_sponsorship(sponsor, sponsorship_type, entity_type, primary)
+        for sponsor, sponsorship_type, primary, entity_type in self._sponsors(leg_details.get('Sponsors', [])) :
+            bill.add_sponsorship(sponsor, sponsorship_type, entity_type, primary)
 
             
-            for attachment in leg_details.get('Attachments', []) :
-                if attachment['label']:
-                    bill.add_document_link(attachment['label'],
-                                           attachment['url'],
-                                           media_type="application/pdf")
+        for attachment in leg_details.get('Attachments', []) :
+            if attachment['label']:
+                bill.add_document_link(attachment['label'],
+                                       attachment['url'],
+                                       media_type="application/pdf")
 
-            history = list(history)
+        history = list(history)
 
-            if history :
-                earliest_action = min(self.toTime(action['Date']) 
-                                      for action in history)
+        if history :
+            earliest_action = min(self.toTime(action['Date']) 
+                                  for action in history)
 
-                bill.legislative_session = self._sessions(earliest_action)
-            else :
-                bill.legislative_session = str(self.SESSION_STARTS[0])
+            bill.legislative_session = self._sessions(earliest_action)
+        else :
+            bill.legislative_session = str(self.SESSION_STARTS[0])
 
-            for action in history :
-                action_description = action['Action']
-                if not action_description :
-                    continue
+        for action in history :
+            action_description = action['Action']
+            if not action_description :
+                continue
                     
-                action_class = ACTION_CLASSIFICATION[self._parse_action_description(action_description)]
-                action_date = self.toDate(action['Date'])
-                responsible_org = self._parse_responsible_org(action['Action\xa0By'])
+            action_class = ACTION_CLASSIFICATION[self._parse_action_description(action_description)]
+            action_date = self.toDate(action['Date'])
+            responsible_org = self._parse_responsible_org(action['Action\xa0By'])
                    
-                if responsible_org == 'Town Hall Meeting':
-                    continue
-                else :                    
-                    act = bill.add_action(action_description,
-                                          action_date,
-                                          organization={'name': responsible_org},
-                                          classification=action_class)
+            if responsible_org == 'Town Hall Meeting':
+                continue
+            else :                    
+                act = bill.add_action(action_description,
+                                      action_date,
+                                      organization={'name': responsible_org},
+                                      classification=action_class)
 
-                if 'url' in action['Action\xa0Details'] :
-                    action_detail_url = action['Action\xa0Details']['url']
-                    if action_class == 'referral-committee' :
-                        action_details = self.actionDetails(action_detail_url)
-                        referred_committee = self._parse_referred_committee(action_details['Action text'])
+            if 'url' in action['Action\xa0Details'] :
+                action_detail_url = action['Action\xa0Details']['url']
+                if action_class == 'referral-committee' :
+                    action_details = self.actionDetails(action_detail_url)
+                    referred_committee = self._parse_referred_committee(action_details['Action text'])
                         
-                        act.add_related_entity(referred_committee,
-                                               'organization',
-                                               entity_id = _make_pseudo_id(name=referred_committee))
+                    act.add_related_entity(referred_committee,
+                                           'organization',
+                                           entity_id = _make_pseudo_id(name=referred_committee))
 
-                    # TODO: Voting events
-                    # comment out for not to test bills
-                    """    
-                    result, votes = self.extractVotes(action_detail_url)
-                    if result and votes :
-                        action_vote = VoteEvent(legislative_session=bill.legislative_session, 
-                                           motion_text=action_description,
-                                           organization={'name': responsible_org},
-                                           classification=action_class,
-                                           start_date=action_date,
-                                           result=result,
-                                           bill=bill)
-                        action_vote.add_source(action_detail_url, note='web')
+                # TODO: Voting events
+                # comment out for not to test bills
+                """
+                result, votes = self.extractVotes(action_detail_url)
+                if result and votes :
+                    action_vote = VoteEvent(legislative_session=bill.legislative_session, 
+                    motion_text=action_description,
+                                            organization={'name': responsible_org},
+                                            classification=action_class,
+                                            start_date=action_date,
+                                            result=result,
+                                        bill=bill)
+                    action_vote.add_source(action_detail_url, note='web')
+                    
+                    for option, voter in votes :
+                        action_vote.vote(option, voter)
 
-                        for option, voter in votes :
-                            action_vote.vote(option, voter)
 
-
-                        yield action_vote
-                    """
+                    yield action_vote
+                """
             
-            text = self.text(leg_summary['url'])
+        text = self.text(leg_summary['url'])
 
-            if text :
-                bill.extras = {'local_classification' : leg_summary['Type'],
-                               'full_text' : remove_tags(text)}
-            else :
-                bill.extras = {'local_classification' : leg_summary['Type']}
+        if text :
+            bill.extras = {'local_classification' : leg_summary['Type'],
+                           'full_text' : remove_tags(text)}
+        else :
+            bill.extras = {'local_classification' : leg_summary['Type']}
 
-            yield bill
+        yield bill
 
     def _sessions(self, action_date) :
         for session in self.SESSION_STARTS :

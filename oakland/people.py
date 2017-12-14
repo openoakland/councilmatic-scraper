@@ -16,36 +16,43 @@ class OaklandPersonScraper(LegistarPersonScraper):
     print('OaklandPersonScraper.scrape')
     print(self.jurisdiction)
 
-    for councilman in self.councilMembers():
+    cnt = 0
+    for councilman in self.councilMembers():      
       print("###scrape - counclman:", councilman)
-      assigned_district=self.__assign_district(councilman['Person Name'])
-      start_date = self.toTime(councilman['Start Date']).date()
-      end_date = self.toTime(councilman['End Date']).date()
 
-      person = Person(name=councilman['Person Name'],
-                district=assigned_district,
-                role="Councilmember",
-                primary_org="legislature",
-                start_date=start_date.isoformat(),
-                end_date=end_date)
+      cnt += 1
+      
+      yield self._process_councilman(councilman)
 
-      if councilman["E-mail"]:
-        person.add_contact_detail(type="email",
-                             value=councilman['E-mail']['url'],
-                             note='E-mail')
+  def _process_councilman(self, councilman):
+    assigned_district=self._assign_district(councilman['Person Name'])
+    start_date = self.toTime(councilman['Start Date']).date()
+    end_date = self.toTime(councilman['End Date']).date()
 
-      # Assigning
-      website_url = self.MEMBERLIST
+    person = Person(name=councilman['Person Name'],
+                    district=assigned_district,
+                    role="Councilmember",
+                    primary_org="legislature",
+                    start_date=start_date.isoformat(),
+                    end_date=end_date)
 
-      if councilman['Web Site']:
-        website_url = councilman['Web Site']['url']
+    if councilman["E-mail"]:
+      person.add_contact_detail(type="email",
+                                value=councilman['E-mail']['url'],
+                                note='E-mail')
 
-      person.add_link(website_url, note='web site')
-      person.add_source(website_url)
-      yield person
+    # Assigning
+    website_url = self.MEMBERLIST
+
+    if councilman['Web Site']:
+      website_url = councilman['Web Site']['url']
+
+    person.add_link(website_url, note='web site')
+    person.add_source(website_url)
+    yield person
 
   # Place holder until we can scrape district info from somewhere
-  def __assign_district(self, person_name):
+  def _assign_district(self, person_name):
     districts = {
       "Dan Kalb": "Council District 1",
       "Abel J. Guillén": "Council District 2",
