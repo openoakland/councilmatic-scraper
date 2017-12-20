@@ -2,7 +2,7 @@ import os
 import pytest
 import pickle
 
-from pupa.scrape.bill import Bill
+from pupa.scrape.event import Event
 
 from oakland import Oakland
 from oakland.events import OaklandEventScraper
@@ -26,7 +26,19 @@ event_agendas = load_event_agendas()
 
 # TODO: implement unit test
 def test_parse_event_name():
-    assert False
+    event = event_agendas[0]['event']
+
+    print("###test_parse_meeting_date - event:", event)
+
+    raw_event_name = event['Name']
+    print("###test_parse_meeting_date - raw_event_name: [%s]" % raw_event_name)
+
+    expected_parsed_event_name = 'Rules & Legislation Committee'
+    
+    parsed_event_name = es._parse_event_name(raw_event_name)
+    print("###test_parse_meeting_date - parse_event_name: [%s]" % parsed_event_name)
+    
+    assert parsed_event_name == expected_parsed_event_name
 
 def test_parse_meeting_date():
     event = event_agendas[0]['event']
@@ -49,15 +61,19 @@ def test_parse_meeting_status():
     assert False
 
 # TODO: agenda can be a generator so pickling isn't working right. Come up with another way to unit test this
-"""
+
 def test_process_event_agenda():
     event, agenda = event_agendas[0]['event'], event_agendas[0]['agenda']
 
-    print("###test_process_event_agenda - event:", event)
-    print("###test_process_event_agenda - agenda:", agenda)    
+    def iterate_agenda():
+        for curr_agenda in agenda:
+            yield curr_agenda
     
-    obj = es._process_event_agenda(event, agenda).__next__()
+    print("###test_process_event_agenda - event:", event)
+    #print("###test_process_event_agenda - agenda:", agenda)    
+    
+    obj = es._process_event_agenda(event, iterate_agenda()).__next__()
     print("###test_process_event_agenda - obj:", type(obj), obj)
     
-    assert False
-"""
+    assert isinstance(obj, Event)
+
