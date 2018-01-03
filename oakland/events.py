@@ -12,10 +12,10 @@ class OaklandEventScraper(LegistarEventsScraper):
   BASE_URL = "http://www2.oaklandnet.com/"
 
   def scrape(self):
-    current_year= self.now().year
+    cutoff_year = self.now().year - 1
     index = 0
 
-    for event, agenda in self.events(since=current_year):
+    for event, agenda in self.events(since=cutoff_year):
       print("###scrape - event:", event)
       print("###scrape - event['Meeting Location']:", event['Meeting Location'])
       print("###scrape - agenda:", agenda)
@@ -30,13 +30,15 @@ class OaklandEventScraper(LegistarEventsScraper):
       """
 
       index += 1      
-      #yield self._process_event_agenda(event, agenda)      
+      yield self._process_event_agenda(event, agenda)      
 
+      """
       # debugging only
       if index < 30:
         yield self._process_event_agenda(event, agenda)
       else:
         raise StopIteration()
+      """
 
   def _process_event_agenda(self, event, agenda):
     #event_name = event['Name'].replace('*', '')

@@ -71,3 +71,7 @@ htmlcov
 # Intellij
 .idea
 .cache
+
+# temp
+temp
+tmp

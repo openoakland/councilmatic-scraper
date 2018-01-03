@@ -27,23 +27,24 @@ class OaklandBillScraper(LegistarBillScraper):
     SESSION_STARTS = (2014, 2010, 2006, 2002, 1996)
 
     def scrape(self):
+        cutoff_year = self.now().year - 1
         cnt = 0
         
-        for leg_summary in self.legislation(created_after=datetime(2014, 1, 1)):
+        for leg_summary in self.legislation(created_after=datetime(cutoff_year, 1, 1)):
         #for leg_summary in self.legislation(search_text='Resolution Of IntentionTo Form The Koreatown/Northgate Community', created_after=datetime(2014, 5, 1)):
         #for leg_summary in self.legislation(created_after=datetime(2017, 5, 1)):
             cnt += 1
 
             print("###scrape - leg_summary:", leg_summary)
 
+            """
             if cnt > 5:
                 raise StopIteration
             else:
                 yield self._process_legistlation(leg_summary)
-
             """
             yield self._process_legistlation(leg_summary)
-            """
+            
             
     def _process_legistlation(self, leg_summary):
         # get legDetails because sometimes title is missing from leg_summary
