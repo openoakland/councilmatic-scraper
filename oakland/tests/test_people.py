@@ -10,13 +10,15 @@ from .util import *
 
 def create_people_scraper():
     jurisdiction = load_jurisdiction()
-    datadir = os.path.join(os.getcwd(), 'tests/_data')
+    #datadir = os.path.join(os.getcwd(), 'tests/_data')
+    datadir = os.path.join(os.getcwd(), '_data')
     return OaklandPersonScraper(jurisdiction, datadir)
     
 def load_councilmen():
     councilmen = []
     for i in range(8):
-        curr_councilman = pickle.load(open("tests/data/councilman/councilman_%d.p" % i, "rb"))
+        #curr_councilman = pickle.load(open("tests/data/councilman/councilman_%d.p" % i, "rb"))
+        curr_councilman = pickle.load(open("data/councilman/councilman_%d.p" % i, "rb"))
         councilmen.append(curr_councilman)
 
     return councilmen

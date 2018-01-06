@@ -4,22 +4,19 @@ import importlib
 
 import dj_database_url
 
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgis://pupa:pupa@localhost/opencivicdata')
-SECRET_KEY = 'non-secret'
+# django settings for tests
+#DATABASE_URL = os.environ.get('DATABASE_URL', 'postgis://pupa:pupa@localhost/opencivicdata')
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgis://postgres:str0ng*p4ssw0rd@localhost/opencivicdata')
+SECRET_KEY = 'test'
 INSTALLED_APPS = ('django.contrib.contenttypes',
                   'opencivicdata.core.apps.BaseConfig',
                   'opencivicdata.legislative.apps.BaseConfig',
                   'pupa')
 
-# scrape settings
+CACHE_DIR = os.path.join(os.getcwd(), 'tests/_cache')
+SCRAPED_DATA_DIR = os.path.join(os.getcwd(), 'tests/_data')
 
-SCRAPELIB_RPM = 60
-SCRAPELIB_TIMEOUT = 60
-SCRAPELIB_RETRY_ATTEMPTS = 3
-SCRAPELIB_RETRY_WAIT_SECONDS = 10
-
-CACHE_DIR = os.path.join(os.getcwd(), '_cache')
-SCRAPED_DATA_DIR = os.path.join(os.getcwd(), '_data')
+MIDDLEWARE_CLASSES = ()
 
 # Django settings
 DEBUG = False
@@ -57,16 +54,6 @@ LOGGING = {
 }
 
 
-sys.path.insert(1, os.getcwd())
-loader = importlib.find_loader('pupa_settings')
-if loader is None:
-    print('no pupa_settings on path, using defaults')
-else:
-    from pupa_settings import *     # NOQA
-
-
 DATABASES = {'default': dj_database_url.parse(DATABASE_URL)}
 DATABASES['default']['ENGINE'] = 'django.contrib.gis.db.backends.postgis'
-
-from django.conf import settings
-settings.configure()
+DEFAULT_INDEX_TABLESPACE = ''

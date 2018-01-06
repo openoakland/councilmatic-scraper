@@ -16,7 +16,8 @@ def create_event_scraper():
 def load_event_agendas():
     event_agendas = []
     for i in range(30):
-        curr_event_agenda = pickle.load(open("tests/data/event_agenda/event_agenda_%d.p" % i, "rb"))
+        #curr_event_agenda = pickle.load(open("tests/data/event_agenda/event_agenda_%d.p" % i, "rb"))
+        curr_event_agenda = pickle.load(open("data/event_agenda/event_agenda_%d.p" % i, "rb"))
         event_agendas.append(curr_event_agenda)
 
     return event_agendas

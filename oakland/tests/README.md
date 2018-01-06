@@ -5,11 +5,11 @@ How to Run All Tests
 --------------------
 1. Go to the oakland directory:
 ```
-cd /home/postgres/work/oakland
+cd /home/postgres/work/oakland/tests
 ```
 2. Run run_tests.sh:
 ```
-./run_tests.sh
+pytest
 ```
 
 The run_tests.sh script will run all of the pytest files in the /home/postgres/work/oakland/tests directory.
@@ -18,17 +18,28 @@ How to Run a Single Test File
 -----------------------------
 1. Go to the oakland directory:
 ```
-cd /home/postgres/work/oakland
+cd /home/postgres/work/oakland/tests
 ```
-2. Set Python path:
+2. Run:
 ```
-export PYTHONPATH=.
-```
-3. Run:
-```
-py.test tests/<<test file>>
+pytest <<test file>>
 ```
 i.e.
 ```
-py.test tests/test_bills.py
+pytest test_bills.py
+```
+
+How to Run a Single Test
+------------------------
+1. Go to the oakland directory:
+```
+cd /home/postgres/work/oakland/tests
+```
+2. Run:
+```
+pytest -k <<function name>>
+```
+i.e.
+```
+pytest -k "test_does_person_exist"
 ```

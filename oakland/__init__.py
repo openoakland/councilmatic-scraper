@@ -9,17 +9,18 @@ from pupa.scrape import Jurisdiction, Organization
 from .events import OaklandEventScraper
 from .bills import OaklandBillScraper
 from .people import OaklandPersonScraper
+from .const import ORGANIZATION_NAME
 
 class Oakland(Jurisdiction):
-  ORGANIZATION_NAME = "Oakland City Council"
+  ORGANIZATION_NAME = ORGANIZATION_NAME
   division_id = "ocd-division/country:us/state:ca/place:oakland"
   classification = "legislature"
   name = "City of Oakland"
   url = "https://beta.oaklandca.gov/councils/city-council"
 
   scrapers = {
-    #"events": OaklandEventScraper,
-    #"people": OaklandPersonScraper,
+    "events": OaklandEventScraper,
+    "people": OaklandPersonScraper,
     "bills": OaklandBillScraper
   }
 
@@ -82,7 +83,8 @@ class Oakland(Jurisdiction):
                  "Special Public Safety Committee",
                  "Special Public Works Committee",
                  "Special Rules and Legislation Committee",
-                 "Transportation Department"
+                 "Transportation Department",
+                 "Unknown"
     ]
 
     for org_name in org_names:

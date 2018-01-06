@@ -1,7 +1,8 @@
 from legistar.bills import LegistarBillScraper
-from pupa.scrape import Bill, VoteEvent
+from pupa.scrape import Bill, VoteEvent, Organization, Person
 from pupa.utils import _make_pseudo_id
 from .util import *
+from .const import ORGANIZATION_NAME
 
 from datetime import datetime
 from collections import defaultdict
@@ -26,13 +27,19 @@ class OaklandBillScraper(LegistarBillScraper):
     
     SESSION_STARTS = (2014, 2010, 2006, 2002, 1996)
 
+    def __init__(self, *args, **kwargs):
+        super(LegistarBillScraper, self).__init__(*args, **kwargs)
+
+        self.added_organizations = set()
+        self.added_people = set()
+    
     def scrape(self):
         cutoff_year = self.now().year - 1
         cnt = 0
         
-        for leg_summary in self.legislation(created_after=datetime(cutoff_year, 1, 1)):
-        #for leg_summary in self.legislation(search_text='Resolution Of IntentionTo Form The Koreatown/Northgate Community', created_after=datetime(2014, 5, 1)):
-        #for leg_summary in self.legislation(created_after=datetime(2017, 5, 1)):
+        #for leg_summary in self.legislation(created_after=datetime(cutoff_year, 1, 1)):
+        #for leg_summary in self.legislation(search_text="Comprehensive Annual Financial Report (CAFR) And Management Letter", created_after=datetime(cutoff_year, 3, 1)):
+        for leg_summary in self.legislation(created_after=datetime(cutoff_year, 3, 1)):
             cnt += 1
 
             print("###scrape - leg_summary:", leg_summary)
@@ -80,10 +87,24 @@ class OaklandBillScraper(LegistarBillScraper):
 
         bill.add_identifier(file_number, note='File number')
 
-        for sponsor, sponsorship_type, primary, entity_type in self._sponsors(leg_details.get('Sponsors', [])) :
+        raw_sponsors = leg_details.get('Sponsors', [])
+        print("###raw_sponsors:", raw_sponsors)
+        for sponsor, sponsorship_type, primary, entity_type in self._sponsors(raw_sponsors):
+            # hack to make sure sponsor is in the db before creating the billsponsorship
+            if (entity_type == 'organization' and sponsor != ORGANIZATION_NAME and 
+                sponsor not in self.added_organizations and 
+                not self._does_organization_exist(sponsor)):
+                print("###force sponsor organization:", sponsor)
+                self.added_organizations.add(sponsor)
+                yield self._create_organization(sponsor)
+            elif (entity_type == 'person' and sponsor not in self.added_people
+                and not self._does_person_exist(sponsor)): 
+                print("###force sponsor person:", sponsor)
+                self.added_people.add(sponsor)
+                yield self._create_person(sponsor, 'Sponsor', leg_summary['url'])
+                
             bill.add_sponsorship(sponsor, sponsorship_type, entity_type, primary)
 
-            
         for attachment in leg_details.get('Attachments', []) :
             if attachment['label']:
                 bill.add_document_link(attachment['label'],
@@ -108,7 +129,9 @@ class OaklandBillScraper(LegistarBillScraper):
             action_class = ACTION_CLASSIFICATION[self._parse_action_description(action_description)]
             action_date = self.toDate(action['Date'])
             responsible_org = self._parse_responsible_org(action['Action\xa0By'])
-                   
+
+            print("###responsible_org:", responsible_org)
+            
             if responsible_org == 'Town Hall Meeting':
                 continue
             else :                    
@@ -192,14 +215,21 @@ class OaklandBillScraper(LegistarBillScraper):
 
         return parsed_title
 
-    def _get_sponsor_entity_type(self, sponsor_name):
+    def _get_sponsor_org_cnt(self, sponsor_name):
         lower_sponsor_name = sponsor_name.lower()
 
-        for org_keyword in ['depart', 'office', 'commission']:
+        cnt = 0
+        for org_keyword in ['depart', 'office', 'commission', 'oakland', 'public']:
             if org_keyword in lower_sponsor_name:
-                return 'organization'
+                cnt += 1
 
-        return 'person'
+        return cnt
+    
+    def _get_sponsor_entity_type(self, sponsor_name):
+        if self._get_sponsor_org_cnt(sponsor_name) > 0:
+            return 'organization'
+        else:
+            return 'person'
 
     def _sponsors(self, sponsors) :
         def clean_sponsor(sponsor):
@@ -207,9 +237,13 @@ class OaklandBillScraper(LegistarBillScraper):
             return remove_multiple_spaces(sponsor)
             
         if isinstance(sponsors, str):
-            if self._get_sponsor_entity_type(sponsors) != 'organization' and ',' in sponsors:
-                sponsors = remove_multiple_spaces(sponsors)
-                sponsors = [{'label': clean_sponsor(sponsor)} for sponsor in sponsors.split(',')]
+            if ',' in sponsors:
+                _sponsors = remove_multiple_spaces(sponsors)
+                sponsors = []
+                for sponsor in _sponsors.split(','):
+                    sponsor = clean_sponsor(sponsor)
+                    if sponsor != '':
+                        sponsors.append({'label': sponsor}) 
             else:
                 sponsors = [{'label': clean_sponsor(sponsors)}]
 
@@ -261,7 +295,40 @@ class OaklandBillScraper(LegistarBillScraper):
 
         assert (referred_committee != '')
         return referred_committee
-    
+
+    def _does_organization_exist(self, organization_name):
+        # Doing the import here is a little icky but if you did at the beginning of the file, models.__init__.py gets loaded
+        # before django has time to initialize the database.
+        from opencivicdata.core.models import Organization
+        
+        organization_list = Organization.objects.filter(name=organization_name)
+        
+        return (organization_list is not None and len(organization_list) > 0)
+        
+    def _does_person_exist(self, person_name):
+        from opencivicdata.core.models import Person
+
+        person_queryset = Person.objects.filter(name=person_name)
+        
+        return (person_queryset.count() > 0)
+
+    def _create_organization(self, organization_name):
+        return Organization(name=organization_name, classification='lower')
+
+    def _create_person(self, person_name, role, source):
+        # Setting birth_date to 'unknown' because of issue with 'Larry Reid' and pupa.importers._prepare_imports().
+        # A SameNameError exception gets thrown there is more than one person with the same name and a least one of
+        # the person's birth_date's is ''. opencivicdata.birth_date is a varchar. Using the sentinel date, '1900-01-01'.
+        person = Person(name=person_name, role=role, birth_date='1900-01-01')
+        person.add_source(source)
+
+        # This probably isn't right but pupa.importers.memberships is complaining about 'Larry Reid' not having a membership.
+        #   File "/home/postgres/councilmatic/lib/python3.4/site-packages/pupa/importers/memberships.py", line 62, in postimport
+        #     raise NoMembershipsError(person_ids)
+        person.add_membership('Unknown')
+        
+        return person
+        
 BILL_TYPES = {'Informational Report': None,
               'City Resolution': 'resolution',
               'Report and Recommendation': None,
