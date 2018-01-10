@@ -47,4 +47,4 @@ class FergusonPersonScraper(Scraper):
     def scrape(self):
         yield from self.get_council()
         
-    #
+   
