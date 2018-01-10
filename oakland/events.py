@@ -121,7 +121,7 @@ class OaklandEventScraper(LegistarEventsScraper):
     yield ocd_event
 
   def _parse_event_name(self, raw_event_name):
-    return raw_event_name.replace('*', '')
+    return remove_multiple_spaces(raw_event_name.replace('*', ''))
       
   def _parse_meeting_date(self, date_str, ical_url):
     event_date = self.toTime(date_str)
