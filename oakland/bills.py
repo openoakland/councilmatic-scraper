@@ -14,8 +14,9 @@ class OaklandBillScraper(LegistarBillScraper):
     BASE_URL = "https://oakland.legistar.com/"
     TIMEZONE = "US/Pacific"
 
-    VOTE_OPTIONS = {'affirmative' : 'yes',
-                    'negative' : 'no',
+    VOTE_OPTIONS = {'abstained': 'abstain',
+                    'aye' : 'yes',
+                    'nay' : 'no',
                     'conflict' : 'absent',
                     'maternity': 'excused',
                     'paternity' : 'excused',
@@ -23,7 +24,8 @@ class OaklandBillScraper(LegistarBillScraper):
                     'non-voting' : 'not voting',
                     'jury duty' : 'excused',
                     'absent' : 'absent',
-                    'medical' : 'excused'}
+                    'medical' : 'excused',
+                    'vacant': 'absent'}
     
     SESSION_STARTS = (2014, 2010, 2006, 2002, 1996)
 
@@ -36,10 +38,11 @@ class OaklandBillScraper(LegistarBillScraper):
     def scrape(self):
         cutoff_year = self.now().year - 1
         cnt = 0
-        
+
+        #search_text = "Appointments To Infrastructure And Affordable Housing"
         #for leg_summary in self.legislation(created_after=datetime(cutoff_year, 1, 1)):
-        #for leg_summary in self.legislation(search_text="Comprehensive Annual Financial Report (CAFR) And Management Letter", created_after=datetime(cutoff_year, 3, 1)):
-        for leg_summary in self.legislation(created_after=datetime(cutoff_year, 3, 1)):
+        #for leg_summary in self.legislation(search_text=search_text, created_after=datetime(cutoff_year, 1, 1)):
+        for leg_summary in self.legislation(created_after=datetime(cutoff_year, 6, 1)):
             cnt += 1
 
             print("###scrape - leg_summary:", leg_summary)
@@ -88,18 +91,18 @@ class OaklandBillScraper(LegistarBillScraper):
         bill.add_identifier(file_number, note='File number')
 
         raw_sponsors = leg_details.get('Sponsors', [])
-        print("###raw_sponsors:", raw_sponsors)
+
         for sponsor, sponsorship_type, primary, entity_type in self._sponsors(raw_sponsors):
             # hack to make sure sponsor is in the db before creating the billsponsorship
             if (entity_type == 'organization' and sponsor != ORGANIZATION_NAME and 
                 sponsor not in self.added_organizations and 
                 not self._does_organization_exist(sponsor)):
-                print("###force sponsor organization:", sponsor)
+
                 self.added_organizations.add(sponsor)
                 yield self._create_organization(sponsor)
             elif (entity_type == 'person' and sponsor not in self.added_people
                 and not self._does_person_exist(sponsor)): 
-                print("###force sponsor person:", sponsor)
+
                 self.added_people.add(sponsor)
                 yield self._create_person(sponsor, 'Sponsor', leg_summary['url'])
                 
@@ -130,8 +133,6 @@ class OaklandBillScraper(LegistarBillScraper):
             action_date = self.toDate(action['Date'])
             responsible_org = self._parse_responsible_org(action['Action\xa0By'])
 
-            print("###responsible_org:", responsible_org)
-            
             if responsible_org == 'Town Hall Meeting':
                 continue
             else :                    
@@ -151,17 +152,16 @@ class OaklandBillScraper(LegistarBillScraper):
                                            entity_id = _make_pseudo_id(name=referred_committee))
 
                 # TODO: Voting events
-                # comment out for not to test bills
-                """
                 result, votes = self.extractVotes(action_detail_url)
+
                 if result and votes :
                     action_vote = VoteEvent(legislative_session=bill.legislative_session, 
-                    motion_text=action_description,
+                                            motion_text=action_description,
                                             organization={'name': responsible_org},
                                             classification=action_class,
                                             start_date=action_date,
                                             result=result,
-                                        bill=bill)
+                                            bill=bill)
                     action_vote.add_source(action_detail_url, note='web')
                     
                     for option, voter in votes :
@@ -169,7 +169,6 @@ class OaklandBillScraper(LegistarBillScraper):
 
 
                     yield action_vote
-                """
             
         text = self.text(leg_summary['url'])
 
@@ -181,6 +180,33 @@ class OaklandBillScraper(LegistarBillScraper):
 
         yield bill
 
+    def extractVotes(self, action_detail_url) :
+        action_detail_page = self.lxmlize(action_detail_url)
+        try:
+            vote_table = action_detail_page.xpath("//table[@id='ctl00_ContentPlaceHolder1_gridVote_ctl00']")[0]
+        except IndexError:
+            self.warning("No votes found in table")
+            return None, []
+        votes = list(self.parseDataTable(vote_table))
+        vote_list = []
+        
+        for vote, _, _ in votes :
+            raw_option = vote['Vote'].lower()
+            print("###extractVotes - raw_option:", raw_option)
+            
+            if 'label' in vote['Person Name']:
+                vote_list.append((self.VOTE_OPTIONS.get(raw_option, raw_option), 
+                                  vote['Person Name']['label']))
+            else:
+                vote_list.append((self.VOTE_OPTIONS.get(raw_option, raw_option), 
+                                  vote['Person Name']))            
+
+        action_detail_div = action_detail_page.xpath(".//div[@id='ctl00_ContentPlaceHolder1_pageTop1']")[0]
+        action_details = self.parseDetails(action_detail_div)
+        result = action_details['Result'].lower()
+
+        return result, vote_list
+        
     def _sessions(self, action_date) :
         for session in self.SESSION_STARTS :
             if action_date >= datetime(session, 1, 1, tzinfo=timezone(self.TIMEZONE)) :
@@ -369,3 +395,5 @@ ACTION_CLASSIFICATION = {
     'Withdrawn and Rescheduled': 'withdrawal',
     'Withdrawn with No New Date': 'withdrawal'
 }
+
+
