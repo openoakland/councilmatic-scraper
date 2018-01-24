@@ -17,7 +17,7 @@ Requires python3, postgresql
 
 ### Setup
 
-The easiest way to get running is with Docker. There is a Docker setup for the scraper here: https://github.com/ekkus93/councilmatic-docker
+The easiest way to get running is with Docker. There is a Docker setup for the scraper here: https://github.com/openoakland/councilmatic-docker
 
 If you prefer to use VirtualEnv or Anaconda on your machine follow the instructions below.
 
