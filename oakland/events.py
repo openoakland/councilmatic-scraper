@@ -30,6 +30,7 @@ class OaklandEventScraper(LegistarEventsScraper):
       """
 
       index += 1      
+
       yield self._process_event_agenda(event, agenda)      
 
       """
@@ -41,84 +42,75 @@ class OaklandEventScraper(LegistarEventsScraper):
       """
 
   def _process_event_agenda(self, event, agenda):
-    #event_name = event['Name'].replace('*', '')
-    event_name = self._parse_event_name(event['Name'])
+    other_orgs = ''
+
+    location_string = event[u'Meeting Location'] 
+      
+    event_location = self._parse_meeting_location(event['Meeting Location'])
+    response = self.get(event['iCalendar']['url'], verify=False)
       
     event_date = self._parse_meeting_date(event['Meeting Date'], event['iCalendar']['url'])
-    event_location = self._parse_meeting_location(event['Meeting Location'])
-    
+    event_name = self._parse_event_name(event['Name'])
     status=self._parse_meeting_status(event_name, event_date, event['Meeting Time'])
-    ocd_event = Event(name=event_name,
-                      start_date=event_date,
-                      # description=event['Meeting\xa0Topic'], # Appears no description is available in Oakland Legistar
-                      location_name=event_location,
-                      status=status)
+    description = event.get('Meeting\xa0Topic', '')
+      
+    e = Event(name=event_name, start_date=event_date, description=description, location_name=event_location, status=status)
 
-    if event["Meeting Details"] != 'Not\xa0available' and event["Meeting Details"] != 'Meeting\xa0details':
-      ocd_event.add_source(event["Meeting Details"]['url'], note='web')
-    else:
-      ocd_event.add_source(self.EVENTSPAGE)
+    extras = self._parse_extras(event[u'Meeting Location'])
+    if extras is not None:
+      e.extras = extras
+        
+    # minutes
+    minutes = event.get('Minutes', None)
+    if minutes is not None and minutes != 'Not\xa0available':      
+      e.add_media_link(note=minutes['label'], url=minutes['url'], media_type="application/pdf")
 
-    self.addDocs(ocd_event, event, 'Agenda')
-    self.addDocs(ocd_event, event, 'Minutes')
+    # video
+    video = event.get('Video', None)
+    if video is not None and video != 'Not\xa0available':
+      e.add_media_link(note=video['label'], url=video['url'], media_type="video/mpeg")
+          
+    # multimedia
+    multimedia = event.get('Multimedia', None)
+    if multimedia is not None and multimedia != 'Not\xa0available' :
+      url = multimedia.get('url', None)
+        
+      if url is not None:
+        e.add_media_link(note='Recording', url = url, type="recording", media_type = 'text/html')
 
-    if event['Minutes'] != 'Not\xa0available':      #Adding Minutes
-      ocd_event.add_media_link(note=event['Minutes']['label'],
-                               url=event['Minutes']['url'],
-                               media_type="application/pdf")
+    self.addDocs(e, event, 'Agenda')
+    self.addDocs(e, event, 'Minutes')
 
-    # This code is per documentation; line above is from another city's code
-    # #add a pdf of meeting minutes
-    # ocd_event.add_media_link(note="Meeting minutes",
-    #                 url="http://example.com/hearing/minutes.pdf",
-    #                 media_type="application/pdf")
+    if event['Name'] == 'City Council Stated Meeting' :
+      participating_orgs = ['Oakland City Council']
+    elif 'committee' in event['Name'].lower() :
+      participating_orgs = [event["Name"]]
+    else :
+      participating_orgs = []
 
-    # add an mpeg video
-    if event['Video'] != 'Not\xa0available':
-      ocd_event.add_media_link(note=event['Video']['label'],
-                               url=event['Video']['url'],
-                               media_type="video/mpeg")
+    if other_orgs : 
+      other_orgs = re.sub('Jointl*y with the ', '', other_orgs)
+      participating_orgs += re.split(' and the |, the ', other_orgs)
+          
+    for org in participating_orgs :
+      e.add_committee(name=parse_org(org))
 
-    # add participating orgs
-    participating_orgs = [parse_org(event_name)]
+    if agenda is not None:
+      e.add_source(event["Meeting Details"]['url'], note='web')
+                
+      for item, _, _ in agenda :
+        if item["Name"] :
+          agenda_item = e.add_agenda_item(item["Name"])
+          if item["File\xa0#"] :
+            if item['Action'] :
+              note = item['Action']
+            else :
+              note = 'consideration'
+              agenda_item.add_bill(item["File\xa0#"]['label'], note=note)
+    else :
+      e.add_source(self.EVENTSPAGE, note='web')
 
-    # maybe this isn't necessary but leave it in case an event can have multiple committees in the future
-    for org in participating_orgs:
-      org = org.strip()
-
-      ocd_event.add_committee(name=org)
-      ocd_event.validate()
-
-    #add a person
-    #ocd_event.add_person(name="Dan Kalb", note="Hearing Chair")
-
-    # #add an agenda item to this event
-    # a = ocd_event.add_agenda_item(description="Testimony from concerned citizens")
-    
-    # #the testimony is about transportation and the environment
-    # a.add_subject("Transportation")
-    # a.add_subject("Environment")
-
-    # #and includes these two committees
-    # a.add_committee("Transportation")
-    # a.add_committee("Environment and Natural Resources")
-    
-    # #these people will be present
-    # a.add_person("Jane Brown")
-    # a.add_person("Alicia Jones")
-    # a.add_person("Fred Green")
-    
-    # #they'll be discussing this bill
-    # a.add_bill("HB101")
-    
-    # #here's a document that is included
-    # a.add_media_link(note="Written version of testimony",
-    #                 url="http://example.com/hearing/testimony.pdf",
-    #                 media_type="application/pdf")
-
-    print("###scraper - ocd_event:", ocd_event)
-
-    yield ocd_event
+    yield e
 
   def _parse_event_name(self, raw_event_name):
     return remove_multiple_spaces(raw_event_name.replace('*', ''))
@@ -127,8 +119,8 @@ class OaklandEventScraper(LegistarEventsScraper):
     event_date = self.toTime(date_str)
     response = self.get(ical_url, verify=False)
     event_time = self.ical(response.text).subcomponents[0]['DTSTART'].dt
-    event_date = event_date.replace(hour=event_time.hour,
-                                    minute=event_time.minute)
+    event_date = event_date.replace(hour=event_time.hour, minute=event_time.minute)
+    
     return event_date
 
   def _parse_meeting_location(self, location_str):
@@ -150,3 +142,19 @@ class OaklandEventScraper(LegistarEventsScraper):
 
     return status
 
+  def _parse_extras(self, meeting_location):
+    extras = []
+
+    if '--em--' in meeting_location:
+      location_string, note = meeting_location.split('--em--')[:2]
+      for each in note.split(' - ') :
+        if each.startswith('Join') :
+          other_orgs = each
+        else :
+          extras.append(each)
+
+    if len(extras) > 0:
+      return {'location note' : ' '.join(extras)}
+    else:
+      return None
+            

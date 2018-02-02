@@ -25,7 +25,8 @@ class OaklandBillScraper(LegistarBillScraper):
                     'jury duty' : 'excused',
                     'absent' : 'absent',
                     'medical' : 'excused',
-                    'vacant': 'absent'}
+                    'vacant': 'absent',
+                    'recused': 'excused'}
     
     SESSION_STARTS = (2014, 2010, 2006, 2002, 1996)
 
@@ -36,16 +37,18 @@ class OaklandBillScraper(LegistarBillScraper):
         self.added_people = set()
     
     def scrape(self):
-        cutoff_year = self.now().year - 1
+        cutoff_year = self.now().year - 2
         cnt = 0
 
-        #search_text = "Appointments To Infrastructure And Affordable Housing"
-        #for leg_summary in self.legislation(created_after=datetime(cutoff_year, 1, 1)):
-        #for leg_summary in self.legislation(search_text=search_text, created_after=datetime(cutoff_year, 1, 1)):
-        for leg_summary in self.legislation(created_after=datetime(cutoff_year, 6, 1)):
+        #search_text = "Recognizing And Honoring Claudia Cappio"
+        #for leg_summary in self.legislation(search_text=search_text, created_after=datetime(2017, 1, 1)):
+        for leg_summary in self.legislation(created_after=datetime(cutoff_year, 1, 1)):
             cnt += 1
 
             print("###scrape - leg_summary:", leg_summary)
+
+            if self._skip_bill(leg_summary['url']):
+                continue
 
             """
             if cnt > 5:
@@ -96,10 +99,10 @@ class OaklandBillScraper(LegistarBillScraper):
             # hack to make sure sponsor is in the db before creating the billsponsorship
             if (entity_type == 'organization' and sponsor != ORGANIZATION_NAME and 
                 sponsor not in self.added_organizations and 
-                not self._does_organization_exist(sponsor)):
+                not does_organization_exist(sponsor)):
 
                 self.added_organizations.add(sponsor)
-                yield self._create_organization(sponsor)
+                yield create_organization(sponsor, leg_summary['url'])
             elif (entity_type == 'person' and sponsor not in self.added_people
                 and not self._does_person_exist(sponsor)): 
 
@@ -321,25 +324,20 @@ class OaklandBillScraper(LegistarBillScraper):
 
         assert (referred_committee != '')
         return referred_committee
-
-    def _does_organization_exist(self, organization_name):
-        # Doing the import here is a little icky but if you did at the beginning of the file, models.__init__.py gets loaded
-        # before django has time to initialize the database.
-        from opencivicdata.core.models import Organization
-        
-        organization_list = Organization.objects.filter(name=organization_name)
-        
-        return (organization_list is not None and len(organization_list) > 0)
         
     def _does_person_exist(self, person_name):
         from opencivicdata.core.models import Person
 
+        # handle the special case for "Larry Reid"
+        if person_name == "Larry Reid" or person_name == "Laurence E. Reid":
+            person_queryset1 = Person.objects.filter(name="Larry Reid")
+            person_queryset2 = Person.objects.filter(name="Laurence E. Reid")
+
+            return (person_queryset1.count() + person_queryset2.count() > 0)
+        
         person_queryset = Person.objects.filter(name=person_name)
         
         return (person_queryset.count() > 0)
-
-    def _create_organization(self, organization_name):
-        return Organization(name=organization_name, classification='lower')
 
     def _create_person(self, person_name, role, source):
         # Setting birth_date to 'unknown' because of issue with 'Larry Reid' and pupa.importers._prepare_imports().
@@ -348,13 +346,31 @@ class OaklandBillScraper(LegistarBillScraper):
         person = Person(name=person_name, role=role, birth_date='1900-01-01')
         person.add_source(source)
 
-        # This probably isn't right but pupa.importers.memberships is complaining about 'Larry Reid' not having a membership.
+        # If the person came through from people.py, he or she would belong to a committee (organization).  Since we don't know
+        # the committee that the person belongs to, just add them to "unknown".  Otherwise, you'll get the following error:
         #   File "/home/postgres/councilmatic/lib/python3.4/site-packages/pupa/importers/memberships.py", line 62, in postimport
         #     raise NoMembershipsError(person_ids)
         person.add_membership('Unknown')
         
         return person
-        
+
+    def _skip_bill(self, source_url):
+        """
+        There's duplicate data with bill #16-0525.  There are two difference pages for the same bill:
+        pupa.exceptions.DuplicateItemError: attempt to import data that would conflict with data already in the import: {'extras': {}, 'bill_id': 
+        'ocd-bill/9c60d230-9dfb-4c54-bafd-58c92039e9dd', 'result': 'pass', 'identifier': '', 'motion_classification': ['filing'], 
+        'legislative_session_id': UUID('5ff23ffe-1459-4cca-91b6-69de7088167d'), 'motion_text': 'Received and Filed', 
+        'organization_id': 'ocd-organization/2175bf59-c382-4a76-b51e-122c44d48421', 
+        'start_date': '2017-01-31'} (already imported as Received and Filed on 16-0525 in City of Oakland 2014 Regular Session)
+        obj1 sources: ['https://oakland.legistar.com/HistoryDetail.aspx?ID=13069701&GUID=2DE15C41-9935-4F1C-98A2-69FBA6301EBB']
+        obj2 sources: ['https://oakland.legistar.com/HistoryDetail.aspx?ID=12996456&GUID=60F568F6-628A-428B-A13E-DDB35EBCA051']
+ 
+        Use the first source. Skip the second source.
+        """
+        skip_urls = ['https://oakland.legistar.com/HistoryDetail.aspx?ID=12996456&GUID=60F568F6-628A-428B-A13E-DDB35EBCA051']
+
+        return (source_url in skip_urls)
+    
 BILL_TYPES = {'Informational Report': None,
               'City Resolution': 'resolution',
               'Report and Recommendation': None,
