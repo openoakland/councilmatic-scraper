@@ -35,20 +35,17 @@ class OaklandBillScraper(LegistarBillScraper):
 
         self.added_organizations = set()
         self.added_people = set()
-    
+        
     def scrape(self):
         cutoff_year = self.now().year - 2
         cnt = 0
 
-        #search_text = "Recognizing And Honoring Claudia Cappio"
-        #for leg_summary in self.legislation(search_text=search_text, created_after=datetime(2017, 1, 1)):
+        #search_text = "Subject:FY 2017-19 Mayor And Council Budget Priorities From"
+        #for leg_summary in self.legislation(search_text=search_text, created_after=datetime(2016, 1, 1)):
         for leg_summary in self.legislation(created_after=datetime(cutoff_year, 1, 1)):
             cnt += 1
 
             print("###scrape - leg_summary:", leg_summary)
-
-            if self._skip_bill(leg_summary['url']):
-                continue
 
             """
             if cnt > 5:
@@ -103,12 +100,13 @@ class OaklandBillScraper(LegistarBillScraper):
 
                 self.added_organizations.add(sponsor)
                 yield create_organization(sponsor, leg_summary['url'])
+            """
             elif (entity_type == 'person' and sponsor not in self.added_people
                 and not self._does_person_exist(sponsor)): 
 
                 self.added_people.add(sponsor)
                 yield self._create_person(sponsor, 'Sponsor', leg_summary['url'])
-                
+            """    
             bill.add_sponsorship(sponsor, sponsorship_type, entity_type, primary)
 
         for attachment in leg_details.get('Attachments', []) :
@@ -127,11 +125,26 @@ class OaklandBillScraper(LegistarBillScraper):
         else :
             bill.legislative_session = str(self.SESSION_STARTS[0])
 
+        action_key_set = set()
         for action in history :
+            print("###action", action)
+            
             action_description = action['Action']
             if not action_description :
                 continue
-                    
+
+            """
+            Fix for issue with duplicate actions with:
+            https://oakland.legistar.com/LegislationDetail.aspx?ID=2907735&GUID=54971489-FEBD-4066-8E6F-524BF00E409A&Options=ID|Text|&Search=Subject%3a%09FY+2017-19+Mayor+And+Council+Budget+Priorities+From%3a%09Office+Of+The+City+Administrator+Recommendation
+            Key off of "Action By" and "Action". Only keep the first action seen. 
+            """
+            action_by = action['Action\xa0By']
+            action_key = '%s|%s' % (action_by, action_description)
+            if action_key in action_key_set:
+                continue
+            else:
+                action_key_set.add(action_key)
+            
             action_class = ACTION_CLASSIFICATION[self._parse_action_description(action_description)]
             action_date = self.toDate(action['Date'])
             responsible_org = self._parse_responsible_org(action['Action\xa0By'])
@@ -144,8 +157,9 @@ class OaklandBillScraper(LegistarBillScraper):
                                       organization={'name': responsible_org},
                                       classification=action_class)
 
-            if 'url' in action['Action\xa0Details'] :
+            if 'url' in action['Action\xa0Details']:
                 action_detail_url = action['Action\xa0Details']['url']
+                
                 if action_class == 'referral-committee' :
                     action_details = self.actionDetails(action_detail_url)
                     referred_committee = self._parse_referred_committee(action_details['Action text'])
@@ -154,7 +168,7 @@ class OaklandBillScraper(LegistarBillScraper):
                                            'organization',
                                            entity_id = _make_pseudo_id(name=referred_committee))
 
-                # TODO: Voting events
+                # Voting events
                 result, votes = self.extractVotes(action_detail_url)
 
                 if result and votes :
@@ -334,6 +348,10 @@ class OaklandBillScraper(LegistarBillScraper):
             person_queryset2 = Person.objects.filter(name="Laurence E. Reid")
 
             return (person_queryset1.count() + person_queryset2.count() > 0)
+
+        # filter Lynette McElhaney (should be added already in people.py)
+        if person_name == "Lynette McElhaney":
+            return True
         
         person_queryset = Person.objects.filter(name=person_name)
         
@@ -354,23 +372,6 @@ class OaklandBillScraper(LegistarBillScraper):
         
         return person
 
-    def _skip_bill(self, source_url):
-        """
-        There's duplicate data with bill #16-0525.  There are two difference pages for the same bill:
-        pupa.exceptions.DuplicateItemError: attempt to import data that would conflict with data already in the import: {'extras': {}, 'bill_id': 
-        'ocd-bill/9c60d230-9dfb-4c54-bafd-58c92039e9dd', 'result': 'pass', 'identifier': '', 'motion_classification': ['filing'], 
-        'legislative_session_id': UUID('5ff23ffe-1459-4cca-91b6-69de7088167d'), 'motion_text': 'Received and Filed', 
-        'organization_id': 'ocd-organization/2175bf59-c382-4a76-b51e-122c44d48421', 
-        'start_date': '2017-01-31'} (already imported as Received and Filed on 16-0525 in City of Oakland 2014 Regular Session)
-        obj1 sources: ['https://oakland.legistar.com/HistoryDetail.aspx?ID=13069701&GUID=2DE15C41-9935-4F1C-98A2-69FBA6301EBB']
-        obj2 sources: ['https://oakland.legistar.com/HistoryDetail.aspx?ID=12996456&GUID=60F568F6-628A-428B-A13E-DDB35EBCA051']
- 
-        Use the first source. Skip the second source.
-        """
-        skip_urls = ['https://oakland.legistar.com/HistoryDetail.aspx?ID=12996456&GUID=60F568F6-628A-428B-A13E-DDB35EBCA051']
-
-        return (source_url in skip_urls)
-    
 BILL_TYPES = {'Informational Report': None,
               'City Resolution': 'resolution',
               'Report and Recommendation': None,

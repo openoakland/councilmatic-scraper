@@ -39,6 +39,7 @@ class Oakland(Jurisdiction):
     org_names = [self.ORGANIZATION_NAME,
                  "Concurrent Meeting of the Oakland Redevelopment Successor Agency and Finance and Management Committee",
                  "Special Education Partnership Committee",
+                 "Special Rules and Legislation Committee",
                  "Unknown"]
 
     for org_name in org_names:
