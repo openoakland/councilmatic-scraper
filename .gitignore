@@ -75,3 +75,5 @@ htmlcov
 # temp
 temp
 tmp
+
+*.tmp
