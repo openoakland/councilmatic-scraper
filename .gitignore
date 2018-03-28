@@ -9,6 +9,9 @@ HearingSchedule.txt
 # vim
 *swp
 
+# emacs
+*~
+
 # Python objects
 *.py[cod]
 
@@ -53,3 +56,24 @@ nosetests.xml
 .pydevproject
 
 __pycache__
+
+# emacs
+*~
+
+.set_django_setting
+
+# pytest
+htmlcov
+
+# Mac stuff
+.DS_Store
+
+# Intellij
+.idea
+.cache
+
+# temp
+temp
+tmp
+
+*.tmp
