@@ -67,6 +67,9 @@ class OaklandBillScraper(LegistarBillScraper):
         if title == '':
             # if title is missing from leg_summary, try to get it from leg_details
             title = self._parse_title(leg_details['Title'])
+
+            if title == '':
+                title = '***UNKNOWN***'
                 
         assert (title != '')
 
