@@ -38,11 +38,12 @@ class OaklandBillScraper(LegistarBillScraper):
         
     def scrape(self):
         cutoff_year = self.now().year - 2
+        cutoff_month = self.now().month
         cnt = 0
 
         #search_text = "Subject:FY 2017-19 Mayor And Council Budget Priorities From"
         #for leg_summary in self.legislation(search_text=search_text, created_after=datetime(2016, 1, 1)):
-        for leg_summary in self.legislation(created_after=datetime(cutoff_year, 1, 1)):
+        for leg_summary in self.legislation(created_after=datetime(cutoff_year, cutoff_month, 1)):
             cnt += 1
 
             print("###scrape - leg_summary:", leg_summary)

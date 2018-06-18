@@ -20,8 +20,8 @@ class Oakland(Jurisdiction):
   url = "https://beta.oaklandca.gov/councils/city-council"
 
   scrapers = {
-    "events": OaklandEventScraper,
-    "people": OaklandPersonScraper,
+    #"events": OaklandEventScraper,
+    #"people": OaklandPersonScraper,
     "bills": OaklandBillScraper
   }
 
@@ -37,7 +37,6 @@ class Oakland(Jurisdiction):
   # should get dynamically created during scrape() for events and bills.
   def get_organizations(self):
     org_names = [self.ORGANIZATION_NAME,
-                 "Concurrent Meeting of the Oakland Redevelopment Successor Agency and Finance and Management Committee",
                  "Special Education Partnership Committee",
                  "Special Rules and Legislation Committee",
                  "Unknown"]
